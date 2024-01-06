@@ -14,7 +14,7 @@ Server specifications:
 
 Execute the command:
 ```bash
-go run server/cmd/main.go
+go run server/cmd/main.go server/config/base.yaml
 ```
 
 ## Publisher Client
@@ -29,4 +29,11 @@ go run client/publisher/cmd/main.go
 Execute the command:
 ```bash
 go run client/subscriber/cmd/main.go
+```
+
+# Tests
+
+Execute the command to run unit tests:
+```bash
+go test ./...
 ```
