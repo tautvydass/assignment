@@ -49,6 +49,12 @@ func TestListener(t *testing.T) {
 	wg.Wait()
 	listenerMock.EXPECT().Close().Return(assert.AnError).Times(1)
 	require.EqualError(t, l.Shutdown(), assert.AnError.Error())
+
+	for {
+		if !l.started {
+			break
+		}
+	}
 	require.NoError(t, l.Shutdown())
 
 	// make sure the callback was called

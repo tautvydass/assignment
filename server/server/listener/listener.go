@@ -33,10 +33,11 @@ type QUICListener interface {
 }
 
 type listener struct {
-	callback NewConnectionCallback
-	close    chan struct{}
-	listener QUICListener
-	started  bool
+	callback     NewConnectionCallback
+	close        chan struct{}
+	listener     QUICListener
+	started      bool
+	connCancelFn context.CancelFunc
 
 	// used for mocks in tests
 	startListenerFn func(port int) (QUICListener, error)
@@ -70,15 +71,18 @@ func (l *listener) Start(port int) error {
 }
 
 func (l *listener) run() {
+	ctx, cancel := context.WithCancel(context.Background())
+	l.connCancelFn = cancel
+
 	for {
 		select {
 		case <-l.close:
 			l.started = false
 			return
 		default:
-			conn, err := l.listener.Accept(context.Background())
+			conn, err := l.listener.Accept(ctx)
 			if err != nil {
-				fmt.Printf("error accepting connection: %v\n", err)
+				fmt.Printf("Error accepting connection: %v\n", err)
 				continue
 			}
 
@@ -92,7 +96,11 @@ func (l *listener) Shutdown() error {
 		return nil
 	}
 
+	if l.connCancelFn != nil {
+		l.connCancelFn()
+	}
 	l.close <- struct{}{}
+
 	return l.listener.Close()
 }
 
