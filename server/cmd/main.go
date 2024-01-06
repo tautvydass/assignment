@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"os"
 	"os/signal"
@@ -17,10 +18,10 @@ func main() {
 	// Resolve config path from command line arguments.
 	args := os.Args[1:]
 	if len(args) == 0 {
-		panic("missing config path argument")
+		panic("missing (config file, cert file, key file) argument(s)")
 	}
-	if len(args) > 1 {
-		panic("too many arguments")
+	if len(args) != 3 {
+		panic("mismatching number of arguments, expected 3 (config file, cert file, key file)")
 	}
 	path := args[0]
 
@@ -28,6 +29,15 @@ func main() {
 	config, err := config.LoadConfig(path)
 	if err != nil {
 		panic(fmt.Sprintf("error loading config at path %q: %v", path, err))
+	}
+
+	// Load TLS certificate and key.
+	cert, err := tls.LoadX509KeyPair(args[1], args[2])
+	if err != nil {
+		panic(fmt.Sprintf("error loading TLS certificate and key: %v", err))
+	}
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{cert},
 	}
 
 	logger, err := zap.NewProduction()
@@ -41,7 +51,7 @@ func main() {
 	server := server.New(server.Config{
 		SubscriberPort: config.SubscriberPort,
 		PublisherPort:  config.PublisherPort,
-	}, logger)
+	}, logger, tlsConfig)
 	if err := server.Start(); err != nil {
 		panic(fmt.Sprintf("error starting server: %v", err))
 	}

@@ -22,7 +22,7 @@ type NewConnectionCallback func(conn connection.Connection)
 
 // Listener is an interface for the connection listener.
 type Listener interface {
-	Start(port int) error
+	Start(port int, tlsConfig *tls.Config) error
 	Shutdown() error
 }
 
@@ -41,7 +41,7 @@ type listener struct {
 	logger       *zap.Logger
 
 	// used for mocks in tests
-	startListenerFn func(port int) (QUICListener, error)
+	startListenerFn func(port int, tlsConfig *tls.Config) (QUICListener, error)
 }
 
 // New creates a new connection listener. Provided callback function
@@ -54,12 +54,12 @@ func New(cb NewConnectionCallback, logger *zap.Logger) Listener {
 	}
 }
 
-func (l *listener) Start(port int) error {
+func (l *listener) Start(port int, tlsConfig *tls.Config) error {
 	if l.started {
 		return ErrAlreadyStarted
 	}
 
-	listener, err := l.startListenerFn(port)
+	listener, err := l.startListenerFn(port, tlsConfig)
 	if err != nil {
 		return errors.Wrap(err, "start listener")
 	}
@@ -106,7 +106,7 @@ func (l *listener) Shutdown() error {
 	return l.listener.Close()
 }
 
-func startListener(port int) (QUICListener, error) {
+func startListener(port int, tlsConfig *tls.Config) (QUICListener, error) {
 	conn, err := net.ListenUDP("udp4", &net.UDPAddr{Port: port})
 	if err != nil {
 		return nil, errors.Wrap(err, "set up udp listener")
@@ -116,8 +116,7 @@ func startListener(port int) (QUICListener, error) {
 		Conn: conn,
 	}
 
-	// TODO: set up TLS certificate
-	listener, err := transport.Listen(&tls.Config{}, &quic.Config{})
+	listener, err := transport.Listen(tlsConfig, &quic.Config{})
 	if err != nil {
 		return nil, errors.Wrap(err, "set up quic listener")
 	}

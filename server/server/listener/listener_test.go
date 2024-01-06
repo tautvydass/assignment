@@ -1,6 +1,7 @@
 package listener
 
 import (
+	"crypto/tls"
 	"sync"
 	"testing"
 
@@ -17,7 +18,7 @@ func TestListener(t *testing.T) {
 	var (
 		ctrl            = gomock.NewController(t)
 		listenerMock    = mocks.NewMockQUICListener(ctrl)
-		startListenerFn = func(port int) (QUICListener, error) {
+		startListenerFn = func(int, *tls.Config) (QUICListener, error) {
 			return listenerMock, nil
 		}
 	)
@@ -43,8 +44,8 @@ func TestListener(t *testing.T) {
 	l := New(callbackFn, zap.NewNop()).(*listener)
 	l.startListenerFn = startListenerFn
 
-	require.NoError(t, l.Start(1111))
-	require.EqualError(t, l.Start(1111), ErrAlreadyStarted.Error())
+	require.NoError(t, l.Start(1111, &tls.Config{}))
+	require.EqualError(t, l.Start(1111, &tls.Config{}), ErrAlreadyStarted.Error())
 
 	// wait for the callback to be called and shutdown the listener
 	wg.Wait()

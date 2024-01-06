@@ -6,6 +6,7 @@ package mocks
 
 import (
 	context "context"
+	tls "crypto/tls"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -102,15 +103,15 @@ func (mr *MockListenerMockRecorder) Shutdown() *gomock.Call {
 }
 
 // Start mocks base method.
-func (m *MockListener) Start(arg0 int) error {
+func (m *MockListener) Start(arg0 int, arg1 *tls.Config) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Start", arg0)
+	ret := m.ctrl.Call(m, "Start", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Start indicates an expected call of Start.
-func (mr *MockListenerMockRecorder) Start(arg0 interface{}) *gomock.Call {
+func (mr *MockListenerMockRecorder) Start(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockListener)(nil).Start), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockListener)(nil).Start), arg0, arg1)
 }

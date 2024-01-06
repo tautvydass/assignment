@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/tls"
 	"testing"
 
 	"assignment/server/server/listener"
@@ -19,7 +20,7 @@ func TestServer_Lifecycle(t *testing.T) {
 			SubscriberPort: 1111,
 			PublisherPort:  2222,
 		}
-		s            = New(config, zap.NewNop())
+		s            = New(config, zap.NewNop(), &tls.Config{})
 		ctrl         = gomock.NewController(t)
 		listenerMock = listenermocks.NewMockListener(ctrl)
 	)
@@ -28,8 +29,8 @@ func TestServer_Lifecycle(t *testing.T) {
 		return listenerMock
 	}
 
-	listenerMock.EXPECT().Start(config.PublisherPort).Return(nil).Times(1)
-	listenerMock.EXPECT().Start(config.SubscriberPort).Return(nil).Times(1)
+	listenerMock.EXPECT().Start(config.PublisherPort, gomock.Any()).Return(nil).Times(1)
+	listenerMock.EXPECT().Start(config.SubscriberPort, gomock.Any()).Return(nil).Times(1)
 	listenerMock.EXPECT().Shutdown().Return(nil).Times(2)
 
 	// make sure config is set
@@ -59,25 +60,25 @@ func TestServer_Start(t *testing.T) {
 		}{
 			"error_starting_publisher_listener": {
 				setup: func(lm *listenermocks.MockListener) {
-					lm.EXPECT().Start(config.PublisherPort).
+					lm.EXPECT().Start(config.PublisherPort, gomock.Any()).
 						Return(assert.AnError).Times(1)
 				},
 				wantErr: errors.Wrap(assert.AnError, "start publisher listener"),
 			},
 			"error_starting_subscriber_listener": {
 				setup: func(lm *listenermocks.MockListener) {
-					lm.EXPECT().Start(config.PublisherPort).
+					lm.EXPECT().Start(config.PublisherPort, gomock.Any()).
 						Return(nil).Times(1)
-					lm.EXPECT().Start(config.SubscriberPort).
+					lm.EXPECT().Start(config.SubscriberPort, gomock.Any()).
 						Return(assert.AnError).Times(1)
 				},
 				wantErr: errors.Wrap(assert.AnError, "start subscriber listener"),
 			},
 			"happy_path": {
 				setup: func(lm *listenermocks.MockListener) {
-					lm.EXPECT().Start(config.PublisherPort).
+					lm.EXPECT().Start(config.PublisherPort, gomock.Any()).
 						Return(nil).Times(1)
-					lm.EXPECT().Start(config.SubscriberPort).
+					lm.EXPECT().Start(config.SubscriberPort, gomock.Any()).
 						Return(nil).Times(1)
 				},
 				wantErr: nil,
@@ -90,7 +91,7 @@ func TestServer_Start(t *testing.T) {
 			var (
 				ctrl         = gomock.NewController(t)
 				listenerMock = listenermocks.NewMockListener(ctrl)
-				s            = New(config, zap.NewNop()).(*server)
+				s            = New(config, zap.NewNop(), &tls.Config{}).(*server)
 			)
 
 			tc.setup(listenerMock)

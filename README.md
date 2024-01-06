@@ -14,7 +14,7 @@ Server specifications:
 
 Execute the command:
 ```bash
-go run server/cmd/main.go server/config/base.yaml
+go run server/cmd/main.go server/config/base.yaml secrets/server.crt secrets/server.key
 ```
 
 ## Publisher Client

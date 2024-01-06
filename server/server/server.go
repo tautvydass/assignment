@@ -1,6 +1,8 @@
 package server
 
 import (
+	"crypto/tls"
+
 	"assignment/lib/connection"
 	"assignment/server/server/listener"
 
@@ -27,18 +29,24 @@ type Server interface {
 }
 
 // New creates a new broker server.
-func New(config Config, logger *zap.Logger) Server {
+func New(
+	config Config,
+	logger *zap.Logger,
+	tlsConfig *tls.Config,
+) Server {
 	return &server{
 		config:      config,
 		logger:      logger,
+		tlsConfig:   tlsConfig,
 		newListener: listener.New,
 	}
 }
 
 type server struct {
-	config  Config
-	started bool
-	logger  *zap.Logger
+	config    Config
+	started   bool
+	logger    *zap.Logger
+	tlsConfig *tls.Config
 
 	publisherListener  listener.Listener
 	subscriberListener listener.Listener
@@ -56,13 +64,13 @@ func (s *server) Start() error {
 	}
 
 	s.publisherListener = s.newListener(s.addPublisher, s.logger)
-	if err := s.publisherListener.Start(s.config.PublisherPort); err != nil {
+	if err := s.publisherListener.Start(s.config.PublisherPort, s.tlsConfig); err != nil {
 		return errors.Wrap(err, "start publisher listener")
 	}
 	s.logger.Info("Started publisher listener", zap.Int("port", s.config.PublisherPort))
 
 	s.subscriberListener = s.newListener(s.addSubscriber, s.logger)
-	if err := s.subscriberListener.Start(s.config.SubscriberPort); err != nil {
+	if err := s.subscriberListener.Start(s.config.SubscriberPort, s.tlsConfig); err != nil {
 		return errors.Wrap(err, "start subscriber listener")
 	}
 	s.logger.Info("Started subscriber listener", zap.Int("port", s.config.SubscriberPort))
