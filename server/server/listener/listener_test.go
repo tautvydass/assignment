@@ -10,6 +10,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestListener(t *testing.T) {
@@ -39,7 +40,7 @@ func TestListener(t *testing.T) {
 		}
 	}
 
-	l := New(callbackFn).(*listener)
+	l := New(callbackFn, zap.NewNop()).(*listener)
 	l.startListenerFn = startListenerFn
 
 	require.NoError(t, l.Start(1111))

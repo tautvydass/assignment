@@ -9,6 +9,8 @@ import (
 
 	"assignment/server/config"
 	"assignment/server/server"
+
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -28,16 +30,22 @@ func main() {
 		panic(fmt.Sprintf("error loading config at path %q: %v", path, err))
 	}
 
+	logger, err := zap.NewProduction()
+	if err != nil {
+		panic(fmt.Sprintf("error creating logger: %v", err))
+	}
+	defer logger.Sync()
+
 	// Start the server.
-	fmt.Println("Starting server")
+	logger.Info("Starting server")
 	server := server.New(server.Config{
 		SubscriberPort: config.SubscriberPort,
 		PublisherPort:  config.PublisherPort,
-	})
+	}, logger)
 	if err := server.Start(); err != nil {
 		panic(fmt.Sprintf("error starting server: %v", err))
 	}
-	fmt.Println("Server started and running")
+	logger.Info("Server started and running")
 
 	// Set up graceful shutdown.
 	shutdown := make(chan os.Signal, 1)
@@ -59,10 +67,10 @@ func main() {
 
 	select {
 	case <-closed:
-		fmt.Println("Graceful shutdown complete")
+		logger.Info("Graceful shutdown complete")
 		return
 	case <-ctx.Done():
-		fmt.Println("Graceful shutdown timed out, shutting down")
+		logger.Info("Graceful shutdown timed out, shutting down")
 		return
 	}
 }

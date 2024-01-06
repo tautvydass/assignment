@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestServer_Lifecycle(t *testing.T) {
@@ -18,12 +19,12 @@ func TestServer_Lifecycle(t *testing.T) {
 			SubscriberPort: 1111,
 			PublisherPort:  2222,
 		}
-		s            = New(config)
+		s            = New(config, zap.NewNop())
 		ctrl         = gomock.NewController(t)
 		listenerMock = listenermocks.NewMockListener(ctrl)
 	)
 
-	s.(*server).newListener = func(cb listener.NewConnectionCallback) listener.Listener {
+	s.(*server).newListener = func(cb listener.NewConnectionCallback, _ *zap.Logger) listener.Listener {
 		return listenerMock
 	}
 
@@ -89,11 +90,11 @@ func TestServer_Start(t *testing.T) {
 			var (
 				ctrl         = gomock.NewController(t)
 				listenerMock = listenermocks.NewMockListener(ctrl)
-				s            = New(config).(*server)
+				s            = New(config, zap.NewNop()).(*server)
 			)
 
 			tc.setup(listenerMock)
-			s.newListener = func(cb listener.NewConnectionCallback) listener.Listener {
+			s.newListener = func(cb listener.NewConnectionCallback, _ *zap.Logger) listener.Listener {
 				return listenerMock
 			}
 

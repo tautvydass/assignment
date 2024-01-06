@@ -1,12 +1,11 @@
 package server
 
 import (
-	"fmt"
-
 	"assignment/lib/connection"
 	"assignment/server/server/listener"
 
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 )
 
 var (
@@ -28,9 +27,10 @@ type Server interface {
 }
 
 // New creates a new broker server.
-func New(config Config) Server {
+func New(config Config, logger *zap.Logger) Server {
 	return &server{
 		config:      config,
+		logger:      logger,
 		newListener: listener.New,
 	}
 }
@@ -38,12 +38,16 @@ func New(config Config) Server {
 type server struct {
 	config  Config
 	started bool
+	logger  *zap.Logger
 
 	publisherListener  listener.Listener
 	subscriberListener listener.Listener
 
 	// listener constructor delegate used for mocks
-	newListener func(cb listener.NewConnectionCallback) listener.Listener
+	newListener func(
+		cb listener.NewConnectionCallback,
+		logger *zap.Logger,
+	) listener.Listener
 }
 
 func (s *server) Start() error {
@@ -51,17 +55,17 @@ func (s *server) Start() error {
 		return ErrAlreadyStarted
 	}
 
-	s.publisherListener = s.newListener(s.addPublisher)
+	s.publisherListener = s.newListener(s.addPublisher, s.logger)
 	if err := s.publisherListener.Start(s.config.PublisherPort); err != nil {
 		return errors.Wrap(err, "start publisher listener")
 	}
-	fmt.Printf("Started publisher listener on port %d\n", s.config.PublisherPort)
+	s.logger.Info("Started publisher listener", zap.Int("port", s.config.PublisherPort))
 
-	s.subscriberListener = s.newListener(s.addSubscriber)
+	s.subscriberListener = s.newListener(s.addSubscriber, s.logger)
 	if err := s.subscriberListener.Start(s.config.SubscriberPort); err != nil {
 		return errors.Wrap(err, "start subscriber listener")
 	}
-	fmt.Printf("Started subscriber listener on port %d\n", s.config.SubscriberPort)
+	s.logger.Info("Started subscriber listener", zap.Int("port", s.config.SubscriberPort))
 
 	s.started = true
 	return nil
@@ -87,11 +91,11 @@ func (s *server) Shutdown() error {
 func (s *server) addPublisher(conn connection.Connection) {
 	// TODO: create a bidirectional stream
 	// TODO: save the publisher in memory
-	fmt.Printf("Publisher connected: %v\n", conn)
+	s.logger.Info("Publisher connected", zap.Any("conn", conn))
 }
 
 func (s *server) addSubscriber(conn connection.Connection) {
 	// TODO: create a simple stream
 	// TODO: save the subscriber in memory
-	fmt.Printf("Pubscriber connected: %v\n", conn)
+	s.logger.Info("Subscriber connected", zap.Any("conn", conn))
 }
