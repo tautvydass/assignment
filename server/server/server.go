@@ -20,6 +20,7 @@ var (
 type Config struct {
 	SubscriberPort int
 	PublisherPort  int
+	TLS            *tls.Config
 }
 
 // Server is an interface for the broker server.
@@ -29,24 +30,18 @@ type Server interface {
 }
 
 // New creates a new broker server.
-func New(
-	config Config,
-	logger *zap.Logger,
-	tlsConfig *tls.Config,
-) Server {
+func New(config Config, logger *zap.Logger) Server {
 	return &server{
 		config:      config,
 		logger:      logger,
-		tlsConfig:   tlsConfig,
 		newListener: listener.New,
 	}
 }
 
 type server struct {
-	config    Config
-	started   bool
-	logger    *zap.Logger
-	tlsConfig *tls.Config
+	config  Config
+	started bool
+	logger  *zap.Logger
 
 	publisherListener  listener.Listener
 	subscriberListener listener.Listener
@@ -64,13 +59,13 @@ func (s *server) Start() error {
 	}
 
 	s.publisherListener = s.newListener(s.addPublisher, s.logger)
-	if err := s.publisherListener.Start(s.config.PublisherPort, s.tlsConfig); err != nil {
+	if err := s.publisherListener.Start(s.config.PublisherPort, s.config.TLS); err != nil {
 		return errors.Wrap(err, "start publisher listener")
 	}
 	s.logger.Info("Started publisher listener", zap.Int("port", s.config.PublisherPort))
 
 	s.subscriberListener = s.newListener(s.addSubscriber, s.logger)
-	if err := s.subscriberListener.Start(s.config.SubscriberPort, s.tlsConfig); err != nil {
+	if err := s.subscriberListener.Start(s.config.SubscriberPort, s.config.TLS); err != nil {
 		return errors.Wrap(err, "start subscriber listener")
 	}
 	s.logger.Info("Started subscriber listener", zap.Int("port", s.config.SubscriberPort))

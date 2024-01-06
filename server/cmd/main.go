@@ -51,7 +51,8 @@ func main() {
 	server := server.New(server.Config{
 		SubscriberPort: config.SubscriberPort,
 		PublisherPort:  config.PublisherPort,
-	}, logger, tlsConfig)
+		TLS:            tlsConfig,
+	}, logger)
 	if err := server.Start(); err != nil {
 		panic(fmt.Sprintf("error starting server: %v", err))
 	}

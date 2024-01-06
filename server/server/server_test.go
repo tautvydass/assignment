@@ -19,8 +19,9 @@ func TestServer_Lifecycle(t *testing.T) {
 		config = Config{
 			SubscriberPort: 1111,
 			PublisherPort:  2222,
+			TLS:            &tls.Config{},
 		}
-		s            = New(config, zap.NewNop(), &tls.Config{})
+		s            = New(config, zap.NewNop())
 		ctrl         = gomock.NewController(t)
 		listenerMock = listenermocks.NewMockListener(ctrl)
 	)
@@ -53,6 +54,7 @@ func TestServer_Start(t *testing.T) {
 		config = Config{
 			PublisherPort:  1111,
 			SubscriberPort: 2222,
+			TLS:            &tls.Config{},
 		}
 		tests = map[string]struct {
 			setup   func(lm *listenermocks.MockListener)
@@ -91,7 +93,7 @@ func TestServer_Start(t *testing.T) {
 			var (
 				ctrl         = gomock.NewController(t)
 				listenerMock = listenermocks.NewMockListener(ctrl)
-				s            = New(config, zap.NewNop(), &tls.Config{}).(*server)
+				s            = New(config, zap.NewNop()).(*server)
 			)
 
 			tc.setup(listenerMock)
