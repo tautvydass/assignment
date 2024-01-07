@@ -38,7 +38,7 @@ func (c *connection) OpenWriteStream(ctx context.Context) (WriteStream, error) {
 		return nil, errors.Wrap(err, "open unidirectional stream")
 	}
 
-	return NewWriteStream(str), nil
+	return NewWriteStream(c.conn, str), nil
 }
 
 func (c *connection) AcceptReadStream(

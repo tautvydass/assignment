@@ -3,6 +3,7 @@ package connection
 import (
 	"time"
 
+	"assignment/lib/apperr"
 	"assignment/lib/entity"
 
 	"github.com/pkg/errors"
@@ -22,13 +23,15 @@ type WriteStream interface {
 type writeStream struct {
 	// TODO: create a stripped interface alias for quic.SendStream and
 	// use it instead of quic.SendStream.
+	conn    quic.Connection
 	stream  quic.SendStream
 	timeout time.Duration
 }
 
 // NewWriteStream constructs a new write stream.
-func NewWriteStream(stream quic.SendStream) WriteStream {
+func NewWriteStream(conn quic.Connection, stream quic.SendStream) WriteStream {
 	return &writeStream{
+		conn:   conn,
 		stream: stream,
 	}
 }
@@ -51,5 +54,14 @@ func (s *writeStream) SetSendMessageTimeout(timeout time.Duration) {
 }
 
 func (s *writeStream) CloseStream() error {
-	return s.stream.Close()
+	s.stream.CancelWrite(apperr.ErrCodeClosedByClient)
+	if err := s.stream.Close(); err != nil {
+		if !apperr.IsConnectionClosedByPeerErr(err) {
+			return errors.Wrap(err, "close write stream")
+		}
+	}
+
+	return errors.Wrap(
+		s.conn.CloseWithError(apperr.ErrCodeClosedByClient, ""),
+		"close connection")
 }

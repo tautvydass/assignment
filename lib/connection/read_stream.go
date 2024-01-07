@@ -2,7 +2,6 @@ package connection
 
 import (
 	"fmt"
-	"io"
 	"sync"
 
 	"assignment/lib/apperr"
@@ -77,7 +76,6 @@ func (s *readStream) CloseStream() error {
 		s.conn.CloseWithError(apperr.ErrCodeClosedByClient, ""),
 		"close connection with error",
 	)
-
 }
 
 func (s *readStream) listen() {
@@ -85,7 +83,7 @@ func (s *readStream) listen() {
 		s.syncBuffer()
 		size, err := s.stream.Read(s.buffer)
 		if err != nil {
-			if errors.Is(err, io.EOF) {
+			if apperr.IsConnectionClosedByPeerErr(err) {
 				// Connection closed by the server.
 				close(s.connectionClosed)
 				return
