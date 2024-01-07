@@ -35,9 +35,9 @@ func main() {
 	defer logger.Sync()
 
 	// Set up the receiver.
-	// TODO: handle the connection closed callback.
+	connectionClosed := make(chan struct{})
 	receiver := receiver.New(logger)
-	if err := receiver.Start(port); err != nil {
+	if err := receiver.Start(port, connectionClosed); err != nil {
 		panic(fmt.Sprintf("error starting receiver: %v", err))
 	}
 
@@ -46,7 +46,12 @@ func main() {
 	signal.Notify(shutdown, os.Interrupt)
 	signal.Notify(shutdown, syscall.SIGTERM)
 
-	<-shutdown
-	logger.Info("Shutting down")
+	select {
+	case <-shutdown:
+		logger.Info("Shutting down")
+	case <-connectionClosed:
+		logger.Info("Connection closed by the server, shutting down")
+	}
+
 	receiver.Close()
 }

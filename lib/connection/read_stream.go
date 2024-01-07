@@ -1,7 +1,9 @@
 package connection
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"sync"
 
 	"assignment/lib/entity"
@@ -32,17 +34,20 @@ type readStream struct {
 	readBufferSize  int
 	buffer          []byte
 
-	stream quic.ReceiveStream
+	stream           quic.ReceiveStream
+	connectionClosed chan struct{}
 }
 
 func NewReadStream(
 	stream quic.ReceiveStream,
 	messageReceiver MessageReceiver,
+	connectionClosed chan struct{},
 ) ReadStream {
 	rs := &readStream{
-		messageReceiver: messageReceiver,
-		readBufferSize:  DefaultReadBufferSize,
-		stream:          stream,
+		messageReceiver:  messageReceiver,
+		readBufferSize:   DefaultReadBufferSize,
+		stream:           stream,
+		connectionClosed: connectionClosed,
 	}
 
 	go rs.listen()
@@ -70,6 +75,12 @@ func (s *readStream) listen() {
 		s.syncBuffer()
 		size, err := s.stream.Read(s.buffer)
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				// Connection closed by the server.
+				close(s.connectionClosed)
+				return
+			}
+
 			fmt.Printf("read stream error: %v\n", err)
 			return
 		}

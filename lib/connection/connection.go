@@ -10,9 +10,15 @@ import (
 // Connection is an interface for the connection.
 type Connection interface {
 	// OpenWriteStream opens a new unidirectional stream for sending messages.
-	OpenWriteStream(ctx context.Context) (WriteStream, error)
+	OpenWriteStream(
+		ctx context.Context,
+	) (WriteStream, error)
 	// AcceptReadStream accepts a new unidirectional stream for receiving messages.
-	AcceptReadStream(ctx context.Context, messageReceiver MessageReceiver) (ReadStream, error)
+	AcceptReadStream(
+		ctx context.Context,
+		messageReceiver MessageReceiver,
+		connectionClosed chan struct{},
+	) (ReadStream, error)
 }
 
 type connection struct {
@@ -35,11 +41,15 @@ func (c *connection) OpenWriteStream(ctx context.Context) (WriteStream, error) {
 	return NewWriteStream(str), nil
 }
 
-func (c *connection) AcceptReadStream(ctx context.Context, messageReceiver MessageReceiver) (ReadStream, error) {
+func (c *connection) AcceptReadStream(
+	ctx context.Context,
+	messageReceiver MessageReceiver,
+	connectionClosed chan struct{},
+) (ReadStream, error) {
 	str, err := c.conn.AcceptUniStream(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "accept unidirectional stream")
 	}
 
-	return NewReadStream(str, messageReceiver), nil
+	return NewReadStream(str, messageReceiver, connectionClosed), nil
 }

@@ -23,8 +23,9 @@ const DefaultTimeout = time.Second * 30
 // the server.
 type Receiver interface {
 	// Start establishes a connection with the server and
-	// begins listening to messages.
-	Start(port int) error
+	// begins listening to messages. Given channel is closed
+	// when connection is closed by the server.
+	Start(port int, connectionClosed chan struct{}) error
 	// Close closes the connection with the server.
 	Close()
 }
@@ -41,9 +42,9 @@ func New(logger *zap.Logger) Receiver {
 	}
 }
 
-func (r *receiver) Start(port int) error {
+func (r *receiver) Start(port int, connectionClosed chan struct{}) error {
 	var err error
-	r.readStream, err = r.setupReadStream(port)
+	r.readStream, err = r.setupReadStream(port, connectionClosed)
 	if err != nil {
 		return errors.Wrap(err, "setup read stream")
 	}
@@ -52,7 +53,9 @@ func (r *receiver) Start(port int) error {
 	return nil
 }
 
-func (r *receiver) setupReadStream(port int) (connection.ReadStream, error) {
+func (r *receiver) setupReadStream(
+	port int, connectionClosed chan struct{},
+) (connection.ReadStream, error) {
 	r.logger.Info("Setting up UDP connection")
 	udpConn, err := net.ListenUDP("udp4", &net.UDPAddr{Port: 0})
 	if err != nil {
@@ -77,7 +80,7 @@ func (r *receiver) setupReadStream(port int) (connection.ReadStream, error) {
 		return nil, errors.Wrap(err, "accept unidirectional stream")
 	}
 
-	return connection.NewReadStream(stream, r.handleMessage), nil
+	return connection.NewReadStream(stream, r.handleMessage, connectionClosed), nil
 }
 
 func (r *receiver) handleMessage(message entity.Message) {
