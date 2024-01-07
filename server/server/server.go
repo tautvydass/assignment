@@ -94,6 +94,10 @@ func (s *server) Shutdown() error {
 		return errors.Wrap(err, "shutdown subscriber listener")
 	}
 
+	if err := s.commsController.Close(); err != nil {
+		return errors.Wrap(err, "close comms controller")
+	}
+
 	s.started = false
 	return nil
 }
