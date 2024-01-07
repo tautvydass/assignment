@@ -1,9 +1,11 @@
 package controller
 
 import (
+	"fmt"
+	"sync"
+
 	"assignment/lib/connection"
 	"assignment/lib/entity"
-	"sync"
 
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
@@ -14,10 +16,13 @@ const (
 	DefaultMessageBufferSize = 100
 	// MessageNoSubscribers is the message sent to publishers when there are no subscribers.
 	MessageNoSubscribers = "No subscribers are currently connected"
+	// MessageNewSubscriber is the message sent to publishers when a new subscriber connects.
+	MessageNewSubscriber = "New subscriber connected"
 )
 
 // CommsController is the interface for the comms controller. It is responsible
 // for managing the communication between publishers and subscribers.
+// TODO: handle disconnected publishers and subscribers.
 type CommsController interface {
 	// AddPublisher adds a publisher to the comms controller.
 	AddPublisher(publisher connection.ReadWriteStream)
@@ -54,11 +59,32 @@ func NewCommsController(logger *zap.Logger) CommsController {
 }
 
 func (c *commsController) AddPublisher(publisher connection.ReadWriteStream) {
-	// TODO: implement publisher adding
+	notifier := newNotifier(publisher, c.logger)
+
+	c.Lock()
+	c.publishers[publisher] = notifier
+	c.Unlock()
+	c.logger.Info("Added new publisher")
+
+	// Inform the publisher of the current subscriber count.
+	message := MessageNoSubscribers
+	if subscriberCount := c.subscriberCount(); subscriberCount > 0 {
+		message = fmt.Sprintf("%d subscriber(s) currently connected", subscriberCount)
+	}
+	notifier.queueMessage(entity.Message{Text: message})
 }
 
 func (c *commsController) AddSubscriber(subscriber connection.WriteStream) {
-	// TODO: implement subscriber adding
+	notifier := newNotifier(subscriber, c.logger)
+
+	c.Lock()
+	c.subscribers[subscriber] = notifier
+	c.Unlock()
+	c.logger.Info("Added new subscriber")
+
+	// Inform the publishers of the new subscriber.
+	message := entity.Message{Text: MessageNewSubscriber}
+	c.sendToPublishers(message)
 }
 
 func (c *commsController) MessageReceiver() connection.MessageReceiver {
@@ -122,6 +148,32 @@ func (c *commsController) getSubscriberNotifiers() []*notifier {
 
 	notifiers := make([]*notifier, 0, len(c.subscribers))
 	for _, notifier := range c.subscribers {
+		notifiers = append(notifiers, notifier)
+	}
+
+	return notifiers
+}
+
+func (c *commsController) subscriberCount() int {
+	c.RLock()
+	defer c.RUnlock()
+
+	return len(c.subscribers)
+}
+
+func (c *commsController) sendToPublishers(msg entity.Message) {
+	notifiers := c.getPublisherNotifiers()
+	for _, notifier := range notifiers {
+		notifier.queueMessage(msg)
+	}
+}
+
+func (c *commsController) getPublisherNotifiers() []*notifier {
+	c.RLock()
+	defer c.RUnlock()
+
+	notifiers := make([]*notifier, 0, len(c.publishers))
+	for _, notifier := range c.publishers {
 		notifiers = append(notifiers, notifier)
 	}
 
