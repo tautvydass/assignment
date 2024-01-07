@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"assignment/lib/connection"
+	"assignment/lib/log"
 
 	"github.com/pkg/errors"
 	"github.com/quic-go/quic-go"
-	"go.uber.org/zap"
 )
 
 // ErrAlreadyStarted is returned when attempting to start a
@@ -43,7 +43,6 @@ type listener struct {
 	listener     QUICListener
 	started      bool
 	connCancelFn context.CancelFunc
-	logger       *zap.Logger
 
 	// used for mocks in tests
 	startListenerFn func(port int, tlsConfig *tls.Config) (QUICListener, error)
@@ -51,10 +50,9 @@ type listener struct {
 
 // New creates a new connection listener. Provided callback function
 // must be goroutine safe.
-func New(cb NewConnectionCallback, logger *zap.Logger) Listener {
+func New(cb NewConnectionCallback) Listener {
 	return &listener{
 		callback:        cb,
-		logger:          logger,
 		startListenerFn: startListener,
 	}
 }
@@ -89,7 +87,7 @@ func (l *listener) run() {
 		default:
 			conn, err := l.listener.Accept(ctx)
 			if err != nil {
-				l.logger.Error("Error accepting connection", zap.Error(err))
+				log.Errorf("Error accepting connection: %v", err)
 				continue
 			}
 

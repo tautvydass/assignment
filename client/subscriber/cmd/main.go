@@ -8,8 +8,7 @@ import (
 	"syscall"
 
 	"assignment/client/subscriber/receiver"
-
-	"go.uber.org/zap"
+	"assignment/lib/log"
 )
 
 func main() {
@@ -27,16 +26,9 @@ func main() {
 		panic(fmt.Sprintf("error parsing port: %v", err))
 	}
 
-	// Set up logger.
-	logger, err := zap.NewProduction()
-	if err != nil {
-		panic(fmt.Sprintf("error creating logger: %v", err))
-	}
-	defer logger.Sync()
-
 	// Set up the receiver.
 	connectionClosed := make(chan struct{})
-	receiver := receiver.New(logger)
+	receiver := receiver.New()
 	if err := receiver.Start(port, connectionClosed); err != nil {
 		panic(fmt.Sprintf("error starting receiver: %v", err))
 	}
@@ -48,12 +40,12 @@ func main() {
 
 	select {
 	case <-shutdown:
-		logger.Info("Shutting down")
+		log.Trace("Shutting down")
 	case <-connectionClosed:
-		logger.Info("Connection closed by the server, shutting down")
+		log.Info("Connection closed by the server, shutting down")
 	}
 
 	if err := receiver.Close(); err != nil {
-		logger.Error("Error closing receiver", zap.Error(err))
+		log.Errorf("Error closing receiver: %s", err.Error())
 	}
 }

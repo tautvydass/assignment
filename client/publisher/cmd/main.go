@@ -10,8 +10,7 @@ import (
 	"syscall"
 
 	"assignment/client/publisher/client"
-
-	"go.uber.org/zap"
+	"assignment/lib/log"
 )
 
 func main() {
@@ -29,16 +28,9 @@ func main() {
 		panic(fmt.Sprintf("error parsing port: %v", err))
 	}
 
-	// Set up logger.
-	logger, err := zap.NewProduction()
-	if err != nil {
-		panic(fmt.Sprintf("error creating logger: %v", err))
-	}
-	defer logger.Sync()
-
 	// Set up the publisher client.
 	connectionClosed := make(chan struct{})
-	client := client.New(logger)
+	client := client.New()
 	if err := client.Start(port, connectionClosed); err != nil {
 		panic(fmt.Sprintf("error starting publisher client: %v", err))
 	}
@@ -46,9 +38,9 @@ func main() {
 	go func() {
 		// Set up console reader for publishing messages.
 		reader := bufio.NewReader(os.Stdin)
+		log.Info("ENTER MESSAGES TO THE CONSOLE TO PUBLISH")
 
 		for {
-			fmt.Print("Enter message: ")
 			text, _ := reader.ReadString('\n')
 			text = strings.Replace(text, "\n", "", -1)
 
@@ -65,12 +57,12 @@ func main() {
 
 	select {
 	case <-shutdown:
-		logger.Info("Shutting down")
+		log.Trace("Shutting down")
 	case <-connectionClosed:
-		logger.Info("Connection closed by the server, shutting down")
+		log.Trace("Connection closed by the server, shutting down")
 	}
 
 	if err := client.Close(); err != nil {
-		logger.Error("Error closing publisher client", zap.Error(err))
+		log.Errorf("Error closing publisher client: %s", err.Error())
 	}
 }

@@ -8,10 +8,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"assignment/lib/log"
 	"assignment/server/config"
 	"assignment/server/server"
-
-	"go.uber.org/zap"
 )
 
 func main() {
@@ -40,25 +39,19 @@ func main() {
 		Certificates: []tls.Certificate{cert},
 	}
 
-	logger, err := zap.NewProduction()
-	if err != nil {
-		panic(fmt.Sprintf("error creating logger: %v", err))
-	}
-	defer logger.Sync()
-
 	// Start the server.
-	logger.Info("Starting server")
+	log.Trace("Starting server")
 	server := server.New(server.Config{
 		SubscriberPort:     config.SubscriberPort,
 		PublisherPort:      config.PublisherPort,
 		TLS:                tlsConfig,
 		OpenStreamTimeout:  config.OpenStreamTimeout,
 		SendMessageTimeout: config.SendMessageTimeout,
-	}, logger)
+	})
 	if err := server.Start(); err != nil {
 		panic(fmt.Sprintf("error starting server: %v", err))
 	}
-	logger.Info("Server started and running")
+	log.Info("Server started and running")
 
 	// Set up graceful shutdown.
 	shutdown := make(chan os.Signal, 1)
@@ -80,10 +73,10 @@ func main() {
 
 	select {
 	case <-closed:
-		logger.Info("Graceful shutdown complete")
+		log.Trace("Graceful shutdown complete")
 		return
 	case <-ctx.Done():
-		logger.Info("Graceful shutdown timed out, shutting down")
+		log.Warn("Graceful shutdown timed out, shutting down")
 		return
 	}
 }

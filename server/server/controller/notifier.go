@@ -2,8 +2,7 @@ package controller
 
 import (
 	"assignment/lib/entity"
-
-	"go.uber.org/zap"
+	"assignment/lib/log"
 )
 
 // notifier is a wrapper around sender (publisher or subscriber)
@@ -12,7 +11,6 @@ import (
 type notifier struct {
 	messages chan entity.Message
 	close    chan struct{}
-	logger   *zap.Logger
 	sender   sender
 }
 
@@ -21,11 +19,10 @@ type sender interface {
 }
 
 // newNotifier creates a new notifier with the given sender.
-func newNotifier(sender sender, logger *zap.Logger) *notifier {
+func newNotifier(sender sender) *notifier {
 	n := &notifier{
 		messages: make(chan entity.Message, DefaultMessageBufferSize),
 		close:    make(chan struct{}),
-		logger:   logger,
 		sender:   sender,
 	}
 
@@ -38,7 +35,7 @@ func (n *notifier) queueMessage(message entity.Message) {
 	case n.messages <- message:
 		return
 	default:
-		n.logger.Warn("Message queue is full, message dropped", zap.String("message", message.Text))
+		log.Warnf("Message queue is full, message %q dropped", message.Text)
 	}
 }
 
@@ -49,7 +46,7 @@ func (n *notifier) run() {
 			return
 		case message := <-n.messages:
 			if err := n.sender.SendMessage(message); err != nil {
-				n.logger.Error("Failed to send message", zap.Error(err), zap.String("message", message.Text))
+				log.Errorf("Failed to send message %q: %s", message.Text, err.Error())
 			}
 		}
 	}

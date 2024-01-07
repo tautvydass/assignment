@@ -9,16 +9,15 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 func TestCommsController_Close(t *testing.T) {
-	c := NewCommsController(zap.NewNop())
+	c := NewCommsController()
 	require.NoError(t, c.Close())
 }
 
 func TestCommsController_MessageReceiver_and_sendToSubscribers(t *testing.T) {
-	c := NewCommsController(zap.NewNop()).(*commsController)
+	c := NewCommsController().(*commsController)
 	defer c.Close()
 
 	var wg sync.WaitGroup
@@ -27,7 +26,7 @@ func TestCommsController_MessageReceiver_and_sendToSubscribers(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		streamMock := connectionmock.NewMockReadWriteStream(ctrl)
 		streamMock.EXPECT().CloseStream().Return(nil).Times(1)
-		c.subscribers[streamMock] = newNotifier(sender, zap.NewNop())
+		c.subscribers[streamMock] = newNotifier(sender)
 		wg.Add(1)
 	}
 	require.Len(t, c.subscribers, 3)
@@ -66,7 +65,7 @@ func TestCommsController_AddPublisher_and_AddSubscriber(t *testing.T) {
 		subscriberStream := connectionmock.NewMockReadWriteStream(ctrl)
 		subscriberStream.EXPECT().CloseStream().Return(nil).Times(1)
 
-		c := NewCommsController(zap.NewNop()).(*commsController)
+		c := NewCommsController().(*commsController)
 		defer c.Close()
 
 		c.AddPublisher(publisherStream)
@@ -105,7 +104,7 @@ func TestCommsController_AddPublisher_and_AddSubscriber(t *testing.T) {
 		subscriberStream2 := connectionmock.NewMockReadWriteStream(ctrl)
 		subscriberStream2.EXPECT().CloseStream().Return(nil).Times(1)
 
-		c := NewCommsController(zap.NewNop()).(*commsController)
+		c := NewCommsController().(*commsController)
 		defer c.Close()
 
 		c.AddSubscriber(subscriberStream1)

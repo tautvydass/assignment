@@ -7,7 +7,6 @@ import (
 	"assignment/lib/entity"
 
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 )
 
 func TestNotifier(t *testing.T) {
@@ -15,7 +14,7 @@ func TestNotifier(t *testing.T) {
 	sender := newTestSender(func() {
 		wg.Done()
 	}, []error{nil, assert.AnError, nil})
-	notifier := newNotifier(sender, zap.NewNop())
+	notifier := newNotifier(sender)
 
 	messages := []entity.Message{
 		{Text: "message 1"},

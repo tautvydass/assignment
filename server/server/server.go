@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"assignment/lib/connection"
+	"assignment/lib/log"
 	"assignment/server/server/controller"
 	"assignment/server/server/listener"
 
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 )
 
 var (
@@ -35,29 +35,23 @@ type Server interface {
 }
 
 // New creates a new broker server.
-func New(config Config, logger *zap.Logger) Server {
+func New(config Config) Server {
 	return &server{
 		config:          config,
-		logger:          logger,
 		newListener:     listener.New,
-		commsController: controller.NewCommsController(logger),
+		commsController: controller.NewCommsController(),
 	}
 }
 
 type server struct {
-	config  Config
-	started bool
-	logger  *zap.Logger
-
+	config             Config
+	started            bool
 	publisherListener  listener.Listener
 	subscriberListener listener.Listener
 	commsController    controller.CommsController
 
 	// listener constructor delegate used for mocks
-	newListener func(
-		cb listener.NewConnectionCallback,
-		logger *zap.Logger,
-	) listener.Listener
+	newListener func(cb listener.NewConnectionCallback) listener.Listener
 }
 
 func (s *server) Start() error {
@@ -65,17 +59,17 @@ func (s *server) Start() error {
 		return ErrAlreadyStarted
 	}
 
-	s.publisherListener = s.newListener(s.addPublisher, s.logger)
+	s.publisherListener = s.newListener(s.addPublisher)
 	if err := s.publisherListener.Start(s.config.PublisherPort, s.config.TLS); err != nil {
 		return errors.Wrap(err, "start publisher listener")
 	}
-	s.logger.Info("Started publisher listener", zap.Int("port", s.config.PublisherPort))
+	log.Tracef("Started publisher listener on port %d", s.config.PublisherPort)
 
-	s.subscriberListener = s.newListener(s.addSubscriber, s.logger)
+	s.subscriberListener = s.newListener(s.addSubscriber)
 	if err := s.subscriberListener.Start(s.config.SubscriberPort, s.config.TLS); err != nil {
 		return errors.Wrap(err, "start subscriber listener")
 	}
-	s.logger.Info("Started subscriber listener", zap.Int("port", s.config.SubscriberPort))
+	log.Tracef("Started subscriber listener on port %d", s.config.SubscriberPort)
 
 	s.started = true
 	return nil
@@ -106,10 +100,11 @@ func (s *server) addPublisher(conn connection.Connection) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.config.OpenStreamTimeout)
 	defer cancel()
 
-	s.logger.Info("Publisher connected, opening read write stream")
+	log.Trace("Publisher connected, opening read write stream")
 	readWriteStream, err := conn.OpenReadWriteStream(ctx, s.commsController.MessageReceiver(), nil)
 	if err != nil {
-		s.logger.Error("Error opening read write stream", zap.Error(err))
+		log.Errorf("Error opening publisher stream: %s", err.Error())
+		return
 	}
 	readWriteStream.SetSendMessageTimeout(s.config.SendMessageTimeout)
 
@@ -121,10 +116,10 @@ func (s *server) addSubscriber(conn connection.Connection) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.config.OpenStreamTimeout)
 	defer cancel()
 
-	s.logger.Info("Subscriber connected, opening write stream")
+	log.Trace("Subscriber connected, opening write stream")
 	writeStream, err := conn.OpenWriteStream(ctx)
 	if err != nil {
-		s.logger.Error("Error opening write stream", zap.Error(err))
+		log.Errorf("Error opening subscriber stream: %s", err.Error())
 		return
 	}
 	writeStream.SetSendMessageTimeout(s.config.SendMessageTimeout)

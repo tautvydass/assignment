@@ -6,9 +6,9 @@ import (
 
 	"assignment/lib/connection"
 	"assignment/lib/entity"
+	"assignment/lib/log"
 
 	"go.uber.org/multierr"
-	"go.uber.org/zap"
 )
 
 const (
@@ -41,17 +41,15 @@ type commsController struct {
 
 	messages chan entity.Message
 	close    chan struct{}
-	logger   *zap.Logger
 }
 
 // NewCommsController creates a new comms controller.
-func NewCommsController(logger *zap.Logger) CommsController {
+func NewCommsController() CommsController {
 	c := &commsController{
 		publishers:  make(map[connection.ReadWriteStream]*notifier),
 		subscribers: make(map[connection.WriteStream]*notifier),
 		messages:    make(chan entity.Message, DefaultMessageBufferSize),
 		close:       make(chan struct{}),
-		logger:      logger,
 	}
 
 	go c.run()
@@ -59,12 +57,12 @@ func NewCommsController(logger *zap.Logger) CommsController {
 }
 
 func (c *commsController) AddPublisher(publisher connection.ReadWriteStream) {
-	notifier := newNotifier(publisher, c.logger)
+	notifier := newNotifier(publisher)
 
 	c.Lock()
 	c.publishers[publisher] = notifier
 	c.Unlock()
-	c.logger.Info("Added new publisher")
+	log.Info("New publisher successfully connected")
 
 	// Inform the publisher of the current subscriber count.
 	message := MessageNoSubscribers
@@ -75,12 +73,12 @@ func (c *commsController) AddPublisher(publisher connection.ReadWriteStream) {
 }
 
 func (c *commsController) AddSubscriber(subscriber connection.WriteStream) {
-	notifier := newNotifier(subscriber, c.logger)
+	notifier := newNotifier(subscriber)
 
 	c.Lock()
 	c.subscribers[subscriber] = notifier
 	c.Unlock()
-	c.logger.Info("Added new subscriber")
+	log.Info("New subscriber successfully connected")
 
 	// Inform the publishers of the new subscriber.
 	message := entity.Message{Text: MessageNewSubscriber}
@@ -93,7 +91,7 @@ func (c *commsController) MessageReceiver() connection.MessageReceiver {
 		case c.messages <- message:
 			return
 		default:
-			c.logger.Warn("Message queue is full, message dropped", zap.String("message", message.Text))
+			log.Warnf("Message queue is full, message %q dropped", message.Text)
 		}
 	}
 }
@@ -107,7 +105,7 @@ func (c *commsController) Close() error {
 	for subscriberStream, notifier := range c.subscribers {
 		notifier.stop()
 		if err := subscriberStream.CloseStream(); err != nil {
-			c.logger.Error("Error closing subscriber", zap.Error(err))
+			log.Errorf("Error closing subscriber: %s", err.Error())
 			merr = multierr.Append(merr, err)
 		}
 	}
@@ -115,7 +113,7 @@ func (c *commsController) Close() error {
 	for publisherStream, notifier := range c.publishers {
 		notifier.stop()
 		if err := publisherStream.CloseStream(); err != nil {
-			c.logger.Error("Error closing publisher", zap.Error(err))
+			log.Errorf("Error closing publisher: %s", err.Error())
 			merr = multierr.Append(merr, err)
 		}
 	}
@@ -129,7 +127,7 @@ func (c *commsController) run() {
 		case <-c.close:
 			return
 		case msg := <-c.messages:
-			c.logger.Info("Received message", zap.String("message", msg.Text))
+			log.Infof("Received message from publisher: %q", msg.Text)
 			c.sendToSubscribers(msg)
 		}
 	}

@@ -24,6 +24,8 @@ Execute the command:
 go run client/publisher/cmd/main.go 8081
 ```
 
+Once the publisher client is running, use the console input to publish messages.
+
 ## Subscriber Client
 
 Execute the command:
