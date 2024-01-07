@@ -20,7 +20,7 @@ import (
 const DefaultTimeout = time.Second * 30
 
 // Receiver is an interface for receiving messages from
-// the server.
+// the server. The receiver will log all received messages.
 type Receiver interface {
 	// Start establishes a connection with the server and
 	// begins listening to messages. Given channel is closed
