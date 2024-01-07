@@ -8,6 +8,7 @@ import (
 	"assignment/lib/entity"
 
 	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +27,7 @@ func TestCommsController_MessageReceiver_and_sendToSubscribers(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		streamMock := connectionmock.NewMockReadWriteStream(ctrl)
 		streamMock.EXPECT().CloseStream().Return(nil).Times(1)
-		c.subscribers[streamMock] = newNotifier(sender)
+		c.subscribers[streamMock] = newNotifier(sender, nil)
 		wg.Add(1)
 	}
 	require.Len(t, c.subscribers, 3)
@@ -115,5 +116,38 @@ func TestCommsController_AddPublisher_and_AddSubscriber(t *testing.T) {
 
 		require.Len(t, c.publishers, 1)
 		require.Len(t, c.subscribers, 2)
+	})
+}
+
+func TestCommsController_sendToSubscribers_and_removeSubscriber(t *testing.T) {
+	t.Run("no_subscribers_left_should_notify_publishers", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		var wg sync.WaitGroup
+		wg.Add(1)
+
+		publisherStream := connectionmock.NewMockReadWriteStream(ctrl)
+		publisherStream.EXPECT().SendMessage(entity.Message{
+			Text: MessageNoSubscribers,
+		}).DoAndReturn(func(_ entity.Message) error {
+			wg.Done()
+			return nil
+		}).Times(1)
+		publisherStream.EXPECT().CloseStream().Return(nil).Times(1)
+
+		subscriberStream := connectionmock.NewMockReadWriteStream(ctrl)
+		subscriberStream.EXPECT().SendMessage(gomock.Any()).Return(assert.AnError).Times(1)
+		subscriberStream.EXPECT().CloseStream().Return(nil).Times(1)
+
+		c := NewCommsController().(*commsController)
+		defer c.Close()
+
+		c.publishers[publisherStream] = newNotifier(publisherStream, nil)
+		c.subscribers[subscriberStream] = newNotifier(subscriberStream, c.removeSubscriber)
+
+		c.sendToSubscribers(entity.Message{})
+		wg.Wait()
+
+		require.Len(t, c.publishers, 1)
+		require.Len(t, c.subscribers, 0)
 	})
 }

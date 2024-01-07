@@ -71,7 +71,7 @@ func (s *readStream) SetReadBufferSize(size int) {
 }
 
 func (s *readStream) CloseStream() error {
-	s.stream.CancelRead(0)
+	s.stream.CancelRead(apperr.ErrCodeClosedByClient)
 	return errors.Wrap(
 		s.conn.CloseWithError(apperr.ErrCodeClosedByClient, ""),
 		"close connection with error",

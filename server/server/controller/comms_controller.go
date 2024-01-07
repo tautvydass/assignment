@@ -57,7 +57,7 @@ func NewCommsController() CommsController {
 }
 
 func (c *commsController) AddPublisher(publisher connection.ReadWriteStream) {
-	notifier := newNotifier(publisher)
+	notifier := newNotifier(publisher, nil)
 
 	c.Lock()
 	c.publishers[publisher] = notifier
@@ -73,7 +73,7 @@ func (c *commsController) AddPublisher(publisher connection.ReadWriteStream) {
 }
 
 func (c *commsController) AddSubscriber(subscriber connection.WriteStream) {
-	notifier := newNotifier(subscriber)
+	notifier := newNotifier(subscriber, c.removeSubscriber)
 
 	c.Lock()
 	c.subscribers[subscriber] = notifier
@@ -176,4 +176,30 @@ func (c *commsController) getPublisherNotifiers() []*notifier {
 	}
 
 	return notifiers
+}
+
+func (c *commsController) removeSubscriber(sender sender) {
+	subscriber, ok := sender.(connection.WriteStream)
+	if !ok {
+		log.Error("Failed to cast sender to write stream")
+		return
+	}
+
+	if err := subscriber.CloseStream(); err != nil {
+		log.Errorf("Error closing subscriber stream: %s", err.Error())
+	}
+
+	c.Lock()
+	delete(c.subscribers, subscriber)
+	log.Warn("Subscriber disconnected")
+
+	// Inform the publishers of the subscriber count is 0.
+	if len(c.subscribers) == 0 {
+		c.Unlock()
+		message := entity.Message{Text: MessageNoSubscribers}
+		c.sendToPublishers(message)
+		return
+	}
+
+	c.Unlock()
 }

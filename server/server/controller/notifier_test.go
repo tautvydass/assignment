@@ -13,8 +13,8 @@ func TestNotifier(t *testing.T) {
 	var wg sync.WaitGroup
 	sender := newTestSender(func() {
 		wg.Done()
-	}, []error{nil, assert.AnError, nil})
-	notifier := newNotifier(sender)
+	}, []error{nil, nil, nil})
+	notifier := newNotifier(sender, nil)
 
 	messages := []entity.Message{
 		{Text: "message 1"},

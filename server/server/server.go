@@ -101,7 +101,8 @@ func (s *server) addPublisher(conn connection.Connection) {
 	defer cancel()
 
 	log.Trace("Publisher connected, opening read write stream")
-	readWriteStream, err := conn.OpenReadWriteStream(ctx, s.commsController.MessageReceiver(), nil)
+	connectionClosed := make(chan struct{})
+	readWriteStream, err := conn.OpenReadWriteStream(ctx, s.commsController.MessageReceiver(), connectionClosed)
 	if err != nil {
 		log.Errorf("Error opening publisher stream: %s", err.Error())
 		return
@@ -109,6 +110,9 @@ func (s *server) addPublisher(conn connection.Connection) {
 	readWriteStream.SetSendMessageTimeout(s.config.SendMessageTimeout)
 
 	s.commsController.AddPublisher(readWriteStream)
+
+	<-connectionClosed
+	log.Warn("Publisher closed the connection")
 	// TODO: handle disconnected publisher
 }
 
@@ -125,5 +129,4 @@ func (s *server) addSubscriber(conn connection.Connection) {
 	writeStream.SetSendMessageTimeout(s.config.SendMessageTimeout)
 
 	s.commsController.AddSubscriber(writeStream)
-	// TODO: handle disconnected subscriber
 }
