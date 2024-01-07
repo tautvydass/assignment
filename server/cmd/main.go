@@ -49,10 +49,11 @@ func main() {
 	// Start the server.
 	logger.Info("Starting server")
 	server := server.New(server.Config{
-		SubscriberPort:    config.SubscriberPort,
-		PublisherPort:     config.PublisherPort,
-		TLS:               tlsConfig,
-		OpenStreamTimeout: config.OpenStreamTimeout,
+		SubscriberPort:     config.SubscriberPort,
+		PublisherPort:      config.PublisherPort,
+		TLS:                tlsConfig,
+		OpenStreamTimeout:  config.OpenStreamTimeout,
+		SendMessageTimeout: config.SendMessageTimeout,
 	}, logger)
 	if err := server.Start(); err != nil {
 		panic(fmt.Sprintf("error starting server: %v", err))

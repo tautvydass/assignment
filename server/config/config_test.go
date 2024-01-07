@@ -41,17 +41,21 @@ func TestLoadConfig(t *testing.T) {
 				want: Config{
 					GracefulShutdownTimeout: DefaultGracefulShutdownTimeout,
 					OpenStreamTimeout:       DefaultOpenStreamTimeout,
+					SendMessageTimeout:      DefaultSendMessageTimeout,
 				},
 			},
-			"happy_path_with_out_of_bounds_graceful_shutdown_timeout": {
+			"happy_path_with_out_of_bound_durations": {
 				osReadFile: func(string) ([]byte, error) {
 					return yaml.Marshal(Config{
 						GracefulShutdownTimeout: MaxGracefulShutdownTimeout + 1,
+						OpenStreamTimeout:       MaxOpenStreamTimeout + 1,
+						SendMessageTimeout:      MaxSendMessageTimeout + 1,
 					})
 				},
 				want: Config{
 					GracefulShutdownTimeout: MaxGracefulShutdownTimeout,
-					OpenStreamTimeout:       DefaultOpenStreamTimeout,
+					OpenStreamTimeout:       MaxOpenStreamTimeout,
+					SendMessageTimeout:      MaxSendMessageTimeout,
 				},
 			},
 			"happy_path": {
@@ -61,6 +65,7 @@ func TestLoadConfig(t *testing.T) {
 						PublisherPort:           2222,
 						GracefulShutdownTimeout: time.Second,
 						OpenStreamTimeout:       time.Minute,
+						SendMessageTimeout:      time.Second * 2,
 					})
 				},
 				want: Config{
@@ -68,6 +73,7 @@ func TestLoadConfig(t *testing.T) {
 					PublisherPort:           2222,
 					GracefulShutdownTimeout: time.Second,
 					OpenStreamTimeout:       time.Minute,
+					SendMessageTimeout:      time.Second * 2,
 				},
 			},
 		}

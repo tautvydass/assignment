@@ -53,5 +53,7 @@ func main() {
 		logger.Info("Connection closed by the server, shutting down")
 	}
 
-	receiver.Close()
+	if err := receiver.Close(); err != nil {
+		logger.Error("Error closing receiver", zap.Error(err))
+	}
 }

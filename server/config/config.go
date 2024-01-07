@@ -17,6 +17,10 @@ const (
 	DefaultOpenStreamTimeout = time.Second * 30
 	// MaxOpenStreamTimeout is the maximum timeout for opening a stream.
 	MaxOpenStreamTimeout = time.Minute * 5
+	// DefaultSendMessageTimeout is the default timeout for sending a message.
+	DefaultSendMessageTimeout = time.Second * 5
+	// MaxSendMessageTimeout is the maximum timeout for sending a message.
+	MaxSendMessageTimeout = time.Second * 30
 )
 
 // Config contains broker server application configuration.
@@ -25,6 +29,7 @@ type Config struct {
 	PublisherPort           int           `yaml:"publisherPort"`
 	GracefulShutdownTimeout time.Duration `yaml:"gracefulShutdownTimeout"`
 	OpenStreamTimeout       time.Duration `yaml:"openStreamTimeout"`
+	SendMessageTimeout      time.Duration `yaml:"sendMessageTimeout"`
 }
 
 // LoadConfig loads the configuration from the given path.
@@ -61,6 +66,11 @@ func (r *reader) readConfig(path string) (Config, error) {
 		config.OpenStreamTimeout,
 		DefaultOpenStreamTimeout,
 		MaxOpenStreamTimeout,
+	)
+	config.SendMessageTimeout = clampDuration(
+		config.SendMessageTimeout,
+		DefaultSendMessageTimeout,
+		MaxSendMessageTimeout,
 	)
 
 	return config, nil

@@ -21,10 +21,11 @@ var (
 
 // Config contains configuration for the broker server.
 type Config struct {
-	SubscriberPort    int
-	PublisherPort     int
-	TLS               *tls.Config
-	OpenStreamTimeout time.Duration
+	SubscriberPort     int
+	PublisherPort      int
+	TLS                *tls.Config
+	OpenStreamTimeout  time.Duration
+	SendMessageTimeout time.Duration
 }
 
 // Server is an interface for the broker server.
@@ -111,6 +112,7 @@ func (s *server) addSubscriber(conn connection.Connection) {
 		s.logger.Error("Error opening write stream", zap.Error(err))
 		return
 	}
+	writeStream.SetSendMessageTimeout(s.config.SendMessageTimeout)
 
 	message := entity.Message{
 		Text: "Hello from server!",

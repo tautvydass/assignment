@@ -2,3 +2,4 @@ subscriberPort: 8080
 publisherPort: 8081
 gracefulShutdownTimeout: 30s
 openStreamTimeout: 30s
+sendMessageTimeout: 1s
