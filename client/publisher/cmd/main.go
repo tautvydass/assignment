@@ -1,12 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
-	"time"
 
 	"assignment/client/publisher/client"
 
@@ -42,11 +43,20 @@ func main() {
 		panic(fmt.Sprintf("error starting publisher client: %v", err))
 	}
 
-	// TODO: implement a proper way to publish messages.
-	time.Sleep(time.Second)
-	if err := client.Publish("Hello everyone! I'm the new publisher!"); err != nil {
-		panic(fmt.Sprintf("error publishing message: %v", err))
-	}
+	go func() {
+		// Set up console reader for publishing messages.
+		reader := bufio.NewReader(os.Stdin)
+
+		for {
+			fmt.Print("Enter message: ")
+			text, _ := reader.ReadString('\n')
+			text = strings.Replace(text, "\n", "", -1)
+
+			if err := client.Publish(text); err != nil {
+				panic(fmt.Sprintf("error publishing message: %v", err))
+			}
+		}
+	}()
 
 	// Wait for SIGINT or SIGTERM.
 	shutdown := make(chan os.Signal, 1)
