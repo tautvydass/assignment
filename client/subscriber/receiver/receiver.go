@@ -75,12 +75,7 @@ func (r *receiver) setupReadStream(
 	}
 
 	r.logger.Info("Accepting uni directional read stream")
-	stream, err := conn.AcceptUniStream(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "accept unidirectional stream")
-	}
-
-	return connection.NewReadStream(conn, stream, r.handleMessage, connectionClosed), nil
+	return connection.New(conn).AcceptReadStream(ctx, r.handleMessage, connectionClosed)
 }
 
 func (r *receiver) handleMessage(message entity.Message) {
