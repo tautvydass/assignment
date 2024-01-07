@@ -3,12 +3,18 @@ package controller
 import (
 	"assignment/lib/connection"
 	"assignment/lib/entity"
+	"sync"
 
+	"go.uber.org/multierr"
 	"go.uber.org/zap"
 )
 
-// DefaultMessageBufferSize is the default size of the message buffer.
-const DefaultMessageBufferSize = 100
+const (
+	// DefaultMessageBufferSize is the default size of the message buffer.
+	DefaultMessageBufferSize = 100
+	// MessageNoSubscribers is the message sent to publishers when there are no subscribers.
+	MessageNoSubscribers = "No subscribers are currently connected"
+)
 
 // CommsController is the interface for the comms controller. It is responsible
 // for managing the communication between publishers and subscribers.
@@ -24,6 +30,10 @@ type CommsController interface {
 }
 
 type commsController struct {
+	sync.RWMutex
+	publishers  map[connection.ReadWriteStream]*notifier
+	subscribers map[connection.WriteStream]*notifier
+
 	messages chan entity.Message
 	close    chan struct{}
 	logger   *zap.Logger
@@ -32,9 +42,11 @@ type commsController struct {
 // NewCommsController creates a new comms controller.
 func NewCommsController(logger *zap.Logger) CommsController {
 	c := &commsController{
-		messages: make(chan entity.Message, DefaultMessageBufferSize),
-		close:    make(chan struct{}),
-		logger:   logger,
+		publishers:  make(map[connection.ReadWriteStream]*notifier),
+		subscribers: make(map[connection.WriteStream]*notifier),
+		messages:    make(chan entity.Message, DefaultMessageBufferSize),
+		close:       make(chan struct{}),
+		logger:      logger,
 	}
 
 	go c.run()
@@ -62,8 +74,27 @@ func (c *commsController) MessageReceiver() connection.MessageReceiver {
 
 func (c *commsController) Close() error {
 	c.close <- struct{}{}
-	// TODO: implement close
-	return nil
+	c.Lock()
+	defer c.Unlock()
+
+	var merr error
+	for subscriberStream, notifier := range c.subscribers {
+		notifier.stop()
+		if err := subscriberStream.CloseStream(); err != nil {
+			c.logger.Error("Error closing subscriber", zap.Error(err))
+			merr = multierr.Append(merr, err)
+		}
+	}
+
+	for publisherStream, notifier := range c.publishers {
+		notifier.stop()
+		if err := publisherStream.CloseStream(); err != nil {
+			c.logger.Error("Error closing publisher", zap.Error(err))
+			merr = multierr.Append(merr, err)
+		}
+	}
+
+	return merr
 }
 
 func (c *commsController) run() {
@@ -72,11 +103,27 @@ func (c *commsController) run() {
 		case <-c.close:
 			return
 		case msg := <-c.messages:
-			c.publish(msg)
+			c.logger.Info("Received message", zap.String("message", msg.Text))
+			c.sendToSubscribers(msg)
 		}
 	}
 }
 
-func (c *commsController) publish(msg entity.Message) {
-	// TODO: implement message publishing
+func (c *commsController) sendToSubscribers(msg entity.Message) {
+	notifiers := c.getSubscriberNotifiers()
+	for _, notifier := range notifiers {
+		notifier.queueMessage(msg)
+	}
+}
+
+func (c *commsController) getSubscriberNotifiers() []*notifier {
+	c.RLock()
+	defer c.RUnlock()
+
+	notifiers := make([]*notifier, 0, len(c.subscribers))
+	for _, notifier := range c.subscribers {
+		notifiers = append(notifiers, notifier)
+	}
+
+	return notifiers
 }
