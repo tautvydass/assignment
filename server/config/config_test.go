@@ -40,6 +40,7 @@ func TestLoadConfig(t *testing.T) {
 				},
 				want: Config{
 					GracefulShutdownTimeout: DefaultGracefulShutdownTimeout,
+					OpenStreamTimeout:       DefaultOpenStreamTimeout,
 				},
 			},
 			"happy_path_with_out_of_bounds_graceful_shutdown_timeout": {
@@ -50,6 +51,7 @@ func TestLoadConfig(t *testing.T) {
 				},
 				want: Config{
 					GracefulShutdownTimeout: MaxGracefulShutdownTimeout,
+					OpenStreamTimeout:       DefaultOpenStreamTimeout,
 				},
 			},
 			"happy_path": {
@@ -58,12 +60,14 @@ func TestLoadConfig(t *testing.T) {
 						SubscriberPort:          1111,
 						PublisherPort:           2222,
 						GracefulShutdownTimeout: time.Second,
+						OpenStreamTimeout:       time.Minute,
 					})
 				},
 				want: Config{
 					SubscriberPort:          1111,
 					PublisherPort:           2222,
 					GracefulShutdownTimeout: time.Second,
+					OpenStreamTimeout:       time.Minute,
 				},
 			},
 		}

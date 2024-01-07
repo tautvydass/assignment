@@ -1,9 +1,12 @@
 package server
 
 import (
+	"context"
 	"crypto/tls"
+	"time"
 
 	"assignment/lib/connection"
+	"assignment/lib/entity"
 	"assignment/server/server/listener"
 
 	"github.com/pkg/errors"
@@ -18,9 +21,10 @@ var (
 
 // Config contains configuration for the broker server.
 type Config struct {
-	SubscriberPort int
-	PublisherPort  int
-	TLS            *tls.Config
+	SubscriberPort    int
+	PublisherPort     int
+	TLS               *tls.Config
+	OpenStreamTimeout time.Duration
 }
 
 // Server is an interface for the broker server.
@@ -98,7 +102,29 @@ func (s *server) addPublisher(conn connection.Connection) {
 }
 
 func (s *server) addSubscriber(conn connection.Connection) {
-	// TODO: create a simple stream
-	// TODO: save the subscriber in memory
-	s.logger.Info("Subscriber connected", zap.Any("conn", conn))
+	ctx, cancel := context.WithTimeout(context.Background(), s.config.OpenStreamTimeout)
+	defer cancel()
+
+	s.logger.Info("Subscriber connected, opening write stream")
+	writeStream, err := conn.OpenWriteStream(ctx)
+	if err != nil {
+		s.logger.Error("Error opening write stream", zap.Error(err))
+		return
+	}
+
+	message := entity.Message{
+		Text: "Hello from server!",
+	}
+	s.logger.Info("Sending message to subscriber", zap.String("message", message.Text))
+	if err := writeStream.SendMessage(message); err != nil {
+		s.logger.Error("Error sending message to subscriber", zap.Error(err))
+	}
+
+	// TODO: add the subscriber to communication controller
+
+	// TODO: wait for the subscriber to receive the message and close the stream for now
+	time.Sleep(time.Second)
+	if err = writeStream.CloseStream(); err != nil {
+		s.logger.Error("Error closing subscriber stream", zap.Error(err))
+	}
 }

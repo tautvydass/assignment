@@ -11,9 +11,12 @@ import (
 const (
 	// DefaultGracefulShutdownTimeout is the default graceful shutdown timeout.
 	DefaultGracefulShutdownTimeout = time.Second * 30
-
 	// MaxGracefulShutdownTimeout is the maximum graceful shutdown timeout.
 	MaxGracefulShutdownTimeout = time.Minute * 5
+	// DefaultOpenStreamTimeout is the default timeout for opening a stream.
+	DefaultOpenStreamTimeout = time.Second * 30
+	// MaxOpenStreamTimeout is the maximum timeout for opening a stream.
+	MaxOpenStreamTimeout = time.Minute * 5
 )
 
 // Config contains broker server application configuration.
@@ -21,6 +24,7 @@ type Config struct {
 	SubscriberPort          int           `yaml:"subscriberPort"`
 	PublisherPort           int           `yaml:"publisherPort"`
 	GracefulShutdownTimeout time.Duration `yaml:"gracefulShutdownTimeout"`
+	OpenStreamTimeout       time.Duration `yaml:"openStreamTimeout"`
 }
 
 // LoadConfig loads the configuration from the given path.
@@ -48,11 +52,28 @@ func (r *reader) readConfig(path string) (Config, error) {
 		return Config{}, errors.Wrap(err, "unmarshal yaml")
 	}
 
-	if config.GracefulShutdownTimeout == 0 {
-		config.GracefulShutdownTimeout = DefaultGracefulShutdownTimeout
-	} else if config.GracefulShutdownTimeout > MaxGracefulShutdownTimeout {
-		config.GracefulShutdownTimeout = MaxGracefulShutdownTimeout
-	}
+	config.GracefulShutdownTimeout = clampDuration(
+		config.GracefulShutdownTimeout,
+		DefaultGracefulShutdownTimeout,
+		MaxGracefulShutdownTimeout,
+	)
+	config.OpenStreamTimeout = clampDuration(
+		config.OpenStreamTimeout,
+		DefaultOpenStreamTimeout,
+		MaxOpenStreamTimeout,
+	)
 
 	return config, nil
+}
+
+func clampDuration(
+	duration, defaultDuration, maxDuration time.Duration,
+) time.Duration {
+	if duration == 0 {
+		return defaultDuration
+	}
+	if duration > maxDuration {
+		return maxDuration
+	}
+	return duration
 }

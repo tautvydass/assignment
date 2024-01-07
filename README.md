@@ -28,7 +28,7 @@ go run client/publisher/cmd/main.go
 
 Execute the command:
 ```bash
-go run client/subscriber/cmd/main.go
+go run client/subscriber/cmd/main.go 8080
 ```
 
 # Tests
