@@ -76,12 +76,8 @@ func (c *client) setupReadWriteStream(
 	}
 
 	c.logger.Info("Accepting stream")
-	stream, err := conn.AcceptStream(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "accept stream")
-	}
-
-	return connection.NewReadWriteStream(conn, stream, c.handleMessage, connectionClosed), nil
+	return connection.New(conn).
+		AcceptReadWriteStream(ctx, c.handleMessage, connectionClosed)
 }
 
 func (c *client) Publish(message string) error {
