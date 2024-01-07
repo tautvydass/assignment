@@ -1,13 +1,13 @@
 package apperr
 
 import (
-	"errors"
+	"strings"
 
 	"github.com/quic-go/quic-go"
 )
 
-// errCancelledStream is an untyped error returned when the stream is canceled.
-var errCancelledStream = errors.New("close called for canceled stream 3")
+// canceledStreamMessage is the partial error message for a canceled stream.
+const canceledStreamMessage = "close called for canceled stream"
 
 // IsConnectionClosedByPeerErr returns true if the given error is caused
 // by the other peer terminating the connection.
@@ -16,7 +16,7 @@ func IsConnectionClosedByPeerErr(err error) bool {
 		return streamErr.ErrorCode == ErrCodeClosedByClient
 	}
 	// TODO: find a better way to check for this error.
-	if err.Error() == errCancelledStream.Error() {
+	if strings.Contains(err.Error(), canceledStreamMessage) {
 		return true
 	}
 	if appErr, ok := err.(*quic.ApplicationError); ok {

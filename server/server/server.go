@@ -97,9 +97,32 @@ func (s *server) Shutdown() error {
 }
 
 func (s *server) addPublisher(conn connection.Connection) {
-	// TODO: create a bidirectional stream
-	// TODO: save the publisher in memory
-	s.logger.Info("Publisher connected", zap.Any("conn", conn))
+	ctx, cancel := context.WithTimeout(context.Background(), s.config.OpenStreamTimeout)
+	defer cancel()
+
+	s.logger.Info("Publisher connected, opening read write stream")
+	connectionClosed := make(chan struct{})
+	readWriteStream, err := conn.OpenReadWriteStream(ctx, s.handleMessage, connectionClosed)
+	if err != nil {
+		s.logger.Error("Error opening read write stream", zap.Error(err))
+	}
+	readWriteStream.SetSendMessageTimeout(s.config.SendMessageTimeout)
+
+	message := entity.Message{
+		Text: "Hello from server! Number of subscribers connected unknown.",
+	}
+	s.logger.Info("Sending message to publisher", zap.String("message", message.Text))
+	if err := readWriteStream.SendMessage(message); err != nil {
+		s.logger.Error("Error sending message to publisher", zap.Error(err))
+	}
+
+	// TODO: add the publisher to communication controller
+
+	// TODO: wait for the publisher to receive the message and close the stream for now
+	time.Sleep(time.Second * 5)
+	if err = readWriteStream.CloseStream(); err != nil {
+		s.logger.Error("Error closing publisher stream", zap.Error(err))
+	}
 }
 
 func (s *server) addSubscriber(conn connection.Connection) {
@@ -129,4 +152,8 @@ func (s *server) addSubscriber(conn connection.Connection) {
 	if err = writeStream.CloseStream(); err != nil {
 		s.logger.Error("Error closing subscriber stream", zap.Error(err))
 	}
+}
+
+func (s *server) handleMessage(message entity.Message) {
+	s.logger.Info("Received message from publisher", zap.String("message", message.Text))
 }

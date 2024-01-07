@@ -1,6 +1,7 @@
 package apperr
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/quic-go/quic-go"
@@ -25,7 +26,7 @@ func TestIsConnectionClosedByPeerErr(t *testing.T) {
 			want: false,
 		},
 		"stream_cancelled_error": {
-			err:  errCancelledStream,
+			err:  fmt.Errorf("%s 3", canceledStreamMessage),
 			want: true,
 		},
 		"closed_by_application_error": {
