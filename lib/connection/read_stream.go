@@ -1,13 +1,14 @@
 package connection
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"sync"
 
+	"assignment/lib/apperr"
 	"assignment/lib/entity"
 
+	"github.com/pkg/errors"
 	"github.com/quic-go/quic-go"
 )
 
@@ -25,7 +26,7 @@ type ReadStream interface {
 	// SetReadBufferSize sets the read buffer size.
 	SetReadBufferSize(size int)
 	// CloseStream closes the stream.
-	CloseStream()
+	CloseStream() error
 }
 
 type readStream struct {
@@ -35,10 +36,13 @@ type readStream struct {
 	buffer          []byte
 
 	stream           quic.ReceiveStream
+	conn             quic.Connection
 	connectionClosed chan struct{}
 }
 
+// NewReadStream constructs a new read stream.
 func NewReadStream(
+	conn quic.Connection,
 	stream quic.ReceiveStream,
 	messageReceiver MessageReceiver,
 	connectionClosed chan struct{},
@@ -47,6 +51,7 @@ func NewReadStream(
 		messageReceiver:  messageReceiver,
 		readBufferSize:   DefaultReadBufferSize,
 		stream:           stream,
+		conn:             conn,
 		connectionClosed: connectionClosed,
 	}
 
@@ -66,8 +71,13 @@ func (s *readStream) SetReadBufferSize(size int) {
 	s.readBufferSize = size
 }
 
-func (s *readStream) CloseStream() {
+func (s *readStream) CloseStream() error {
 	s.stream.CancelRead(0)
+	return errors.Wrap(
+		s.conn.CloseWithError(apperr.ErrCodeClosedByClient, ""),
+		"close connection with error",
+	)
+
 }
 
 func (s *readStream) listen() {

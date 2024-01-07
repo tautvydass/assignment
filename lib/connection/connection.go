@@ -51,5 +51,5 @@ func (c *connection) AcceptReadStream(
 		return nil, errors.Wrap(err, "accept unidirectional stream")
 	}
 
-	return NewReadStream(str, messageReceiver, connectionClosed), nil
+	return NewReadStream(c.conn, str, messageReceiver, connectionClosed), nil
 }

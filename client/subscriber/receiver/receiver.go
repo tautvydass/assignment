@@ -7,7 +7,6 @@ import (
 	"net"
 	"time"
 
-	"assignment/lib/apperr"
 	"assignment/lib/connection"
 	"assignment/lib/entity"
 
@@ -34,7 +33,6 @@ type Receiver interface {
 type receiver struct {
 	logger     *zap.Logger
 	readStream connection.ReadStream
-	conn       quic.Connection
 }
 
 // New constructs a new receiver.
@@ -70,19 +68,19 @@ func (r *receiver) setupReadStream(
 
 	address := fmt.Sprintf("localhost:%d", port)
 	r.logger.Info("Dialing the server", zap.String("address", address))
-	r.conn, err = transport.Dial(
+	conn, err := transport.Dial(
 		ctx, &net.UDPAddr{Port: port}, &tls.Config{InsecureSkipVerify: true}, &quic.Config{})
 	if err != nil {
 		return nil, errors.Wrapf(err, "dial %q", address)
 	}
 
 	r.logger.Info("Accepting uni directional read stream")
-	stream, err := r.conn.AcceptUniStream(ctx)
+	stream, err := conn.AcceptUniStream(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "accept unidirectional stream")
 	}
 
-	return connection.NewReadStream(stream, r.handleMessage, connectionClosed), nil
+	return connection.NewReadStream(conn, stream, r.handleMessage, connectionClosed), nil
 }
 
 func (r *receiver) handleMessage(message entity.Message) {
@@ -93,10 +91,8 @@ func (r *receiver) Close() error {
 	if r.readStream == nil {
 		return nil
 	}
-	r.readStream.CloseStream()
-
 	return errors.Wrap(
-		r.conn.CloseWithError(apperr.ErrCodeClosedByClient, ""),
-		"close connection",
+		r.readStream.CloseStream(),
+		"close read stream",
 	)
 }
