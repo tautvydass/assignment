@@ -21,7 +21,7 @@ go run server/cmd/main.go server/config/base.yaml secrets/server.crt secrets/ser
 
 Execute the command:
 ```bash
-go run client/publisher/cmd/main.go
+go run client/publisher/cmd/main.go 8081
 ```
 
 ## Subscriber Client
