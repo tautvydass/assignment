@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"assignment/lib/connection"
-	"assignment/lib/entity"
+	"assignment/server/server/controller"
 	"assignment/server/server/listener"
 
 	"github.com/pkg/errors"
@@ -37,9 +37,10 @@ type Server interface {
 // New creates a new broker server.
 func New(config Config, logger *zap.Logger) Server {
 	return &server{
-		config:      config,
-		logger:      logger,
-		newListener: listener.New,
+		config:          config,
+		logger:          logger,
+		newListener:     listener.New,
+		commsController: controller.NewCommsController(logger),
 	}
 }
 
@@ -50,6 +51,7 @@ type server struct {
 
 	publisherListener  listener.Listener
 	subscriberListener listener.Listener
+	commsController    controller.CommsController
 
 	// listener constructor delegate used for mocks
 	newListener func(
@@ -101,28 +103,14 @@ func (s *server) addPublisher(conn connection.Connection) {
 	defer cancel()
 
 	s.logger.Info("Publisher connected, opening read write stream")
-	connectionClosed := make(chan struct{})
-	readWriteStream, err := conn.OpenReadWriteStream(ctx, s.handleMessage, connectionClosed)
+	readWriteStream, err := conn.OpenReadWriteStream(ctx, s.commsController.MessageReceiver(), nil)
 	if err != nil {
 		s.logger.Error("Error opening read write stream", zap.Error(err))
 	}
 	readWriteStream.SetSendMessageTimeout(s.config.SendMessageTimeout)
 
-	message := entity.Message{
-		Text: "Hello from server! Number of subscribers connected unknown.",
-	}
-	s.logger.Info("Sending message to publisher", zap.String("message", message.Text))
-	if err := readWriteStream.SendMessage(message); err != nil {
-		s.logger.Error("Error sending message to publisher", zap.Error(err))
-	}
-
-	// TODO: add the publisher to communication controller
-
-	// TODO: wait for the publisher to receive the message and close the stream for now
-	time.Sleep(time.Second * 5)
-	if err = readWriteStream.CloseStream(); err != nil {
-		s.logger.Error("Error closing publisher stream", zap.Error(err))
-	}
+	s.commsController.AddPublisher(readWriteStream)
+	// TODO: handle disconnected publisher
 }
 
 func (s *server) addSubscriber(conn connection.Connection) {
@@ -137,23 +125,6 @@ func (s *server) addSubscriber(conn connection.Connection) {
 	}
 	writeStream.SetSendMessageTimeout(s.config.SendMessageTimeout)
 
-	message := entity.Message{
-		Text: "Hello from server!",
-	}
-	s.logger.Info("Sending message to subscriber", zap.String("message", message.Text))
-	if err := writeStream.SendMessage(message); err != nil {
-		s.logger.Error("Error sending message to subscriber", zap.Error(err))
-	}
-
-	// TODO: add the subscriber to communication controller
-
-	// TODO: wait for the subscriber to receive the message and close the stream for now
-	time.Sleep(time.Second)
-	if err = writeStream.CloseStream(); err != nil {
-		s.logger.Error("Error closing subscriber stream", zap.Error(err))
-	}
-}
-
-func (s *server) handleMessage(message entity.Message) {
-	s.logger.Info("Received message from publisher", zap.String("message", message.Text))
+	s.commsController.AddSubscriber(writeStream)
+	// TODO: handle disconnected subscriber
 }

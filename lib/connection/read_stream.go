@@ -85,7 +85,9 @@ func (s *readStream) listen() {
 		if err != nil {
 			if apperr.IsConnectionClosedByPeerErr(err) {
 				// Connection closed by the server.
-				close(s.connectionClosed)
+				if s.connectionClosed != nil {
+					close(s.connectionClosed)
+				}
 				return
 			}
 

@@ -15,9 +15,14 @@ import (
 	"go.uber.org/zap"
 )
 
-// DefaultTimeout is the default timeout for establishing
-// a connection to the server
-const DefaultTimeout = time.Second * 30
+const (
+	// DefaultTimeout is the default timeout for establishing
+	// a connection to the server.
+	DefaultTimeout = time.Hour
+	// DefaultIdleTimeout is the default idle timeout for the
+	// connection.
+	DefaultIdleTimeout = time.Hour
+)
 
 // Receiver is an interface for receiving messages from
 // the server. The receiver will log all received messages.
@@ -69,7 +74,9 @@ func (r *receiver) setupReadStream(
 	address := fmt.Sprintf("localhost:%d", port)
 	r.logger.Info("Dialing the server", zap.String("address", address))
 	conn, err := transport.Dial(
-		ctx, &net.UDPAddr{Port: port}, &tls.Config{InsecureSkipVerify: true}, &quic.Config{})
+		ctx, &net.UDPAddr{Port: port}, &tls.Config{InsecureSkipVerify: true}, &quic.Config{
+			MaxIdleTimeout: DefaultIdleTimeout,
+		})
 	if err != nil {
 		return nil, errors.Wrapf(err, "dial %q", address)
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"net"
+	"time"
 
 	"assignment/lib/connection"
 
@@ -15,6 +16,10 @@ import (
 // ErrAlreadyStarted is returned when attempting to start a
 // listener that's already started.
 var ErrAlreadyStarted = errors.New("listener already started")
+
+// DefaultIdleTimeout is the default idle timeout for the
+// connection.
+const DefaultIdleTimeout = time.Hour
 
 // NewConnectionCallback is the type alias for new connection
 // callback function.
@@ -116,7 +121,9 @@ func startListener(port int, tlsConfig *tls.Config) (QUICListener, error) {
 		Conn: conn,
 	}
 
-	listener, err := transport.Listen(tlsConfig, &quic.Config{})
+	listener, err := transport.Listen(tlsConfig, &quic.Config{
+		MaxIdleTimeout: DefaultIdleTimeout,
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "set up quic listener")
 	}
