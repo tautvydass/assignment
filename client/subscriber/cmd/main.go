@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"syscall"
 
-	"assignment/client/subscriber/receiver"
+	"assignment/lib/receiver"
 
 	"go.uber.org/zap"
 )
