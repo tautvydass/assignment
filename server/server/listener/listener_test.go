@@ -17,7 +17,7 @@ func TestListener(t *testing.T) {
 	var (
 		ctrl            = gomock.NewController(t)
 		listenerMock    = mocks.NewMockQUICListener(ctrl)
-		startListenerFn = func(int, *tls.Config) (QUICListener, error) {
+		startListenerFn = func(int, *tls.Config) (connection.QUICListener, error) {
 			return listenerMock, nil
 		}
 	)

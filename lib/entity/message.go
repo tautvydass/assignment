@@ -1,6 +1,6 @@
 package entity
 
-// Message the message abstraction for communication
+// Message is the message format for communication
 // between server and clients.
 type Message struct {
 	Text string
