@@ -21,6 +21,8 @@ type Client interface {
 	// Start establishes a connection with the server and starts
 	// listening to messages. Given channel is closed when connection.
 	Start(port int, connectionClosed chan struct{}) error
+	// SetMessageReceiver sets the message receiver callback.
+	SetMessageReceiver(receiver connection.MessageReceiver)
 	// Publish publishes a message to the server.
 	Publish(message string) error
 	// Close closes the connection with the server.
@@ -49,6 +51,10 @@ func (c *client) Start(port int, connectionClosed chan struct{}) error {
 
 	log.Tracef("Started listening to messages on port %d", port)
 	return nil
+}
+
+func (c *client) SetMessageReceiver(receiver connection.MessageReceiver) {
+	c.stream.SetMessageReceiver(receiver)
 }
 
 func (c *client) setupReadWriteStream(port int) (connection.ReadWriteStream, error) {
