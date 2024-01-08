@@ -30,7 +30,10 @@ type Config struct {
 
 // Server is an interface for the broker server.
 type Server interface {
+	// Start starts the broker server by starting two separate
+	// listeners for subscribers and publishers.
 	Start() error
+	// Shutdown shuts down the broker server.
 	Shutdown() error
 }
 
@@ -100,6 +103,7 @@ func (s *server) addPublisher(conn connection.Connection) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.config.OpenStreamTimeout)
 	defer cancel()
 
+	// Open a stream with the publisher and wait until they accept.
 	log.Trace("Publisher connected, opening read write stream")
 	readWriteStream, err := conn.OpenReadWriteStream(ctx, s.commsController.MessageReceiver())
 	if err != nil {
@@ -108,6 +112,7 @@ func (s *server) addPublisher(conn connection.Connection) {
 	}
 	readWriteStream.SetSendMessageTimeout(s.config.SendMessageTimeout)
 
+	// Add the publisher to the communication controller.
 	s.commsController.AddPublisher(readWriteStream)
 }
 
@@ -115,6 +120,7 @@ func (s *server) addSubscriber(conn connection.Connection) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.config.OpenStreamTimeout)
 	defer cancel()
 
+	// Open a uni directional stream with the subscriber and wait until they accept.
 	log.Trace("Subscriber connected, opening write stream")
 	writeStream, err := conn.OpenWriteStream(ctx)
 	if err != nil {
@@ -123,5 +129,6 @@ func (s *server) addSubscriber(conn connection.Connection) {
 	}
 	writeStream.SetSendMessageTimeout(s.config.SendMessageTimeout)
 
+	// Add the subscriber to the communication controller.
 	s.commsController.AddSubscriber(writeStream)
 }

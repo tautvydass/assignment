@@ -5,9 +5,9 @@ import (
 	"assignment/lib/log"
 )
 
-// notifier is a wrapper around sender (publisher or subscriber)
-// with a separate message queue that handles communication to
-// that receiver independently.
+// notifier is a wrapper around sender (publisher or subscriber
+// stream) with a separate message queue that handles communication
+// to that stream independently.
 type notifier struct {
 	messages         chan entity.Message
 	close            chan struct{}

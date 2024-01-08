@@ -24,7 +24,6 @@ const (
 
 // CommsController is the interface for the comms controller. It is responsible
 // for managing the communication between publishers and subscribers.
-// TODO: handle disconnected publishers and subscribers.
 type CommsController interface {
 	// AddPublisher adds a publisher to the comms controller.
 	AddPublisher(publisher connection.ReadWriteStream)
@@ -99,6 +98,7 @@ func (c *commsController) MessageReceiver() connection.MessageReceiver {
 		case c.messages <- message:
 			return
 		default:
+			// Too many incoming messages, can't handle them all.
 			log.Warnf("Message queue is full, message %q dropped", message.Text)
 		}
 	}
@@ -196,6 +196,7 @@ func (c *commsController) removePublisher(publisher connection.ReadWriteStream) 
 
 	notifier, ok := c.publishers[publisher]
 	if !ok {
+		// This should never happen.
 		log.Warn("Notifier for publisher not found")
 	} else {
 		notifier.stop()
@@ -220,8 +221,8 @@ func (c *commsController) removeSubscriber(sender sender) {
 	delete(c.subscribers, subscriber)
 	log.Warn("Subscriber disconnected")
 
-	// Inform the publishers of the subscriber count is 0.
 	if len(c.subscribers) == 0 {
+		// Inform the publishers that there are no subscribers connected.
 		c.Unlock()
 		message := entity.Message{Text: MessageNoSubscribers}
 		c.sendToPublishers(message)

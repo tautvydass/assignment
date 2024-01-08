@@ -162,23 +162,37 @@ func TestCommsController_sendToSubscribers_and_removeSubscriber(t *testing.T) {
 }
 
 func TestCommsController_AddPublisher_and_removePublisher(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	var callback func()
+	var (
+		ctrl      = gomock.NewController(t)
+		callback1 func()
+		callback2 func()
+	)
 
-	publisherStream := connectionmock.NewMockReadWriteStream(ctrl)
-	publisherStream.EXPECT().SetConnClosedCallback(gomock.Any()).
-		DoAndReturn(func(cb func()) { callback = cb }).Times(1)
-	publisherStream.EXPECT().SendMessage(entity.Message{
+	publisherStream1 := connectionmock.NewMockReadWriteStream(ctrl)
+	publisherStream1.EXPECT().SetConnClosedCallback(gomock.Any()).
+		DoAndReturn(func(cb func()) { callback1 = cb }).Times(1)
+	publisherStream1.EXPECT().SendMessage(entity.Message{
 		Text: MessageNoSubscribers,
 	}).Return(nil).Times(1)
-	publisherStream.EXPECT().CloseStream().Return(nil).Times(1)
+	// Closing the stream should remove the publisher regardless.
+	publisherStream1.EXPECT().CloseStream().Return(assert.AnError).Times(1)
+
+	publisherStream2 := connectionmock.NewMockReadWriteStream(ctrl)
+	publisherStream2.EXPECT().SetConnClosedCallback(gomock.Any()).
+		DoAndReturn(func(cb func()) { callback2 = cb }).Times(1)
+	publisherStream2.EXPECT().SendMessage(entity.Message{
+		Text: MessageNoSubscribers,
+	}).Return(nil).Times(1)
+	publisherStream2.EXPECT().CloseStream().Return(nil).Times(1)
 
 	c := NewCommsController().(*commsController)
 	defer c.Close()
 
-	c.AddPublisher(publisherStream)
-	require.Len(t, c.publishers, 1)
-	callback()
+	c.AddPublisher(publisherStream1)
+	c.AddPublisher(publisherStream2)
+	require.Len(t, c.publishers, 2)
 
+	callback1()
+	callback2()
 	require.Len(t, c.publishers, 0)
 }
