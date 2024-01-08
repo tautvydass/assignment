@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"sync"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"assignment/lib/connection"
 	connectionmocks "assignment/lib/connection/mocks"
 	"assignment/lib/entity"
+	"assignment/server/server/controller"
 	controllermocks "assignment/server/server/controller/mocks"
 	"assignment/server/server/listener"
 	listenermocks "assignment/server/server/listener/mocks"
@@ -36,10 +38,55 @@ func TestServer(t *testing.T) {
 
 	require.NoError(t, server.Start())
 
-	// TODO: simulate new publisher connecting.
-	// TODO: simulate new subscriber connecting.
+	// Connect to the server as a publisher.
+	publisherConn, err := connection.Connect(
+		context.Background(), config.PublisherPort)
+	require.NoError(t, err)
+	publisherMessageCollector := newMessageCollector()
+	publisherStream, err := publisherConn.AcceptReadWriteStream(
+		context.Background(), publisherMessageCollector.add)
+	require.NoError(t, err)
 
+	// TODO: do not use time.Sleep() in tests, find a better way
+	time.Sleep(time.Millisecond * 100)
+
+	// Connect to the server as a subscriber.
+	subscriberConn, err := connection.Connect(
+		context.Background(), config.SubscriberPort)
+	require.NoError(t, err)
+	subscriberMessageCollector := newMessageCollector()
+	subscriberStream, err := subscriberConn.AcceptReadStream(
+		context.Background(), subscriberMessageCollector.add)
+	require.NoError(t, err)
+
+	// TODO: do not use time.Sleep() in tests, find a better way
+	time.Sleep(time.Millisecond * 100)
+
+	// Send a message from the publisher to the subscriber.
+	publisherMessage := entity.Message{Text: "New message from publisher"}
+	require.NoError(t, publisherStream.SendMessage(publisherMessage))
+
+	// TODO: do not use time.Sleep() in tests, find a better way
+	time.Sleep(time.Millisecond * 100)
+
+	require.NoError(t, publisherStream.CloseStream())
+	require.NoError(t, subscriberStream.CloseStream())
 	require.NoError(t, server.Shutdown())
+
+	// TODO: do not use time.Sleep() in tests, find a better way
+	time.Sleep(time.Millisecond * 100)
+
+	// Make sure that the subscriber has received the messages.
+	require.Equal(t, []entity.Message{
+		{Text: controller.MessageHelloSubscriber},
+		publisherMessage,
+	}, subscriberMessageCollector.get())
+
+	// Make sure that the publisher has received the messages.
+	require.Equal(t, []entity.Message{
+		{Text: controller.MessageNoSubscribers},
+		{Text: controller.MessageNewSubscriber},
+	}, publisherMessageCollector.get())
 }
 
 func TestServer_Lifecycle(t *testing.T) {
@@ -260,5 +307,31 @@ func TestServer_addSubscriber(t *testing.T) {
 
 			s.addSubscriber(connectionMock)
 		})
+	}
+}
+
+type messageCollector struct {
+	sync.RWMutex
+
+	messages []entity.Message
+}
+
+func (m *messageCollector) add(msg entity.Message) {
+	m.Lock()
+	defer m.Unlock()
+
+	m.messages = append(m.messages, msg)
+}
+
+func (m *messageCollector) get() []entity.Message {
+	m.RLock()
+	defer m.RUnlock()
+
+	return m.messages
+}
+
+func newMessageCollector() *messageCollector {
+	return &messageCollector{
+		messages: make([]entity.Message, 0),
 	}
 }
