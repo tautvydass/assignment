@@ -1,4 +1,4 @@
-package receiver
+package client
 
 import (
 	"context"
@@ -12,39 +12,39 @@ import (
 )
 
 // DefaultTimeout is the default timeout for establishing
-// a connection to the server.
+// a connection to the servec.
 const DefaultTimeout = time.Hour
 
-// Receiver is an interface for receiving messages from
-// the server. The receiver will log all received messages.
-type Receiver interface {
+// Client represents subscriber client that receives messages
+// from the servec. The receiver will log all received messages.
+type Client interface {
 	// Start establishes a connection with the server and
 	// begins listening to messages. Given channel is closed
-	// when connection is closed by the server.
+	// when connection is closed by the servec.
 	Start(port int, connectionClosed chan struct{}) error
 	// SetMessageReceiver sets the message receiver callback.
 	SetMessageReceiver(receiver connection.MessageReceiver)
-	// Close closes the connection with the server.
+	// Close closes the connection with the servec.
 	Close() error
 }
 
-type receiver struct {
+type client struct {
 	readStream connection.ReadStream
 }
 
-// New constructs a new receiver.
-func New() Receiver {
-	return &receiver{}
+// New constructs a new subscriber client.
+func New() Client {
+	return &client{}
 }
 
-func (r *receiver) Start(port int, connectionClosed chan struct{}) error {
+func (c *client) Start(port int, connectionClosed chan struct{}) error {
 	var err error
-	r.readStream, err = r.setupReadStream(port)
+	c.readStream, err = c.setupReadStream(port)
 	if err != nil {
 		return errors.Wrap(err, "setup read stream")
 	}
 
-	r.readStream.SetConnClosedCallback(func() {
+	c.readStream.SetConnClosedCallback(func() {
 		connectionClosed <- struct{}{}
 	})
 
@@ -52,11 +52,11 @@ func (r *receiver) Start(port int, connectionClosed chan struct{}) error {
 	return nil
 }
 
-func (r *receiver) SetMessageReceiver(receiver connection.MessageReceiver) {
-	r.readStream.SetMessageReceiver(receiver)
+func (c *client) SetMessageReceiver(receiver connection.MessageReceiver) {
+	c.readStream.SetMessageReceiver(receiver)
 }
 
-func (r *receiver) setupReadStream(port int) (connection.ReadStream, error) {
+func (c *client) setupReadStream(port int) (connection.ReadStream, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
 
@@ -66,19 +66,19 @@ func (r *receiver) setupReadStream(port int) (connection.ReadStream, error) {
 	}
 
 	log.Trace("Accepting read stream and waiting for messages...")
-	return conn.AcceptReadStream(ctx, r.handleMessage)
+	return conn.AcceptReadStream(ctx, c.handleMessage)
 }
 
-func (r *receiver) handleMessage(message entity.Message) {
+func (c *client) handleMessage(message entity.Message) {
 	log.Infof("Received message: %q", message.Text)
 }
 
-func (r *receiver) Close() error {
-	if r.readStream == nil {
+func (c *client) Close() error {
+	if c.readStream == nil {
 		return nil
 	}
 	return errors.Wrap(
-		r.readStream.CloseStream(),
+		c.readStream.CloseStream(),
 		"close read stream",
 	)
 }

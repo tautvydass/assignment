@@ -1,4 +1,4 @@
-package receiver
+package client
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestReceiver(t *testing.T) {
+func TestClient(t *testing.T) {
 	tlsConfig, err := certificate.LoadTLSConfig(
 		"../../../testdata/test_server.crt", "../../../testdata/test_server.key")
 	require.NoError(t, err)
@@ -49,18 +49,18 @@ func TestReceiver(t *testing.T) {
 		require.NoError(t, serverStream.CloseStream())
 	}()
 
-	receiver := New()
+	client := New()
 	connectionClosedCh := make(chan struct{})
-	require.NoError(t, receiver.Start(8086, connectionClosedCh))
+	require.NoError(t, client.Start(8086, connectionClosedCh))
 	subscriberMessageCollector := testutil.NewMessageCollector()
-	receiver.SetMessageReceiver(func(message entity.Message) {
+	client.SetMessageReceiver(func(message entity.Message) {
 		subscriberMessageCollector.Add(message)
 		subscriberReceivedMessage.Done()
 	})
 
 	// Wait until server sends the message and shuts down.
 	<-connectionClosedCh
-	require.NoError(t, receiver.Close())
+	require.NoError(t, client.Close())
 
 	// Make sure the subscriber received the message.
 	require.Equal(t, []entity.Message{

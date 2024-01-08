@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"syscall"
 
-	"assignment/client/subscriber/receiver"
+	"assignment/client/subscriber/client"
 	"assignment/lib/log"
 )
 
@@ -26,11 +26,11 @@ func main() {
 		panic(fmt.Sprintf("error parsing port: %v", err))
 	}
 
-	// Set up the receiver.
+	// Set up the subscriber client.
 	connectionClosed := make(chan struct{})
-	receiver := receiver.New()
-	if err := receiver.Start(port, connectionClosed); err != nil {
-		panic(fmt.Sprintf("error starting receiver: %v", err))
+	client := client.New()
+	if err := client.Start(port, connectionClosed); err != nil {
+		panic(fmt.Sprintf("error starting subscriber client: %v", err))
 	}
 
 	// Wait for SIGINT or SIGTERM.
@@ -42,10 +42,10 @@ func main() {
 	case <-shutdown:
 		log.Trace("Shutting down")
 	case <-connectionClosed:
-		log.Info("Connection closed by the server, shutting down")
+		log.Trace("Connection closed by the server, shutting down")
 	}
 
-	if err := receiver.Close(); err != nil {
-		log.Errorf("Error closing receiver: %s", err.Error())
+	if err := client.Close(); err != nil {
+		log.Errorf("Error closing subscriber client: %s", err.Error())
 	}
 }

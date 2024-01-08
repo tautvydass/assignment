@@ -86,6 +86,6 @@ Publisher client will automatically shut down when the server shuts down.
 
 ## Subscriber Client
 
-On start up the subscriber `Receiver` connects to the server and accepts a uni-directional read stream (`ReadStream`). The `Receiver` will print out any messages it receives to the console output. Alternatively, a custom message receiver can be set by calling `Receiver.SetMessageReceiver`.
+On start up the subscriber `Client` connects to the server and accepts a uni-directional read stream (`ReadStream`). The `Client` will print out any messages it receives to the console output. Alternatively, a custom message receiver can be set by calling `Client.SetMessageReceiver`.
 
 Subscriber client will automatically shut down when the server shuts down.
