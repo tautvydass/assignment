@@ -189,6 +189,85 @@ func TestServer_Start(t *testing.T) {
 	}
 }
 
+func TestServer_Shutdown(t *testing.T) {
+	type mocks struct {
+		publisherListener  *listenermocks.MockListener
+		subscriberListener *listenermocks.MockListener
+		controller         *controllermocks.MockCommsController
+	}
+
+	tests := map[string]struct {
+		setup   func(s *server, m mocks)
+		wantErr error
+	}{
+		"server_is_not_started_should_be_no_op": {
+			setup: func(s *server, m mocks) {
+				s.started = false
+			},
+			wantErr: nil,
+		},
+		"error_shutting_down_publisher_listener": {
+			setup: func(s *server, m mocks) {
+				m.publisherListener.EXPECT().Shutdown().Return(assert.AnError).Times(1)
+			},
+			wantErr: errors.Wrap(assert.AnError, "shutdown publisher listener"),
+		},
+		"error_shutting_down_subscriber_listener": {
+			setup: func(s *server, m mocks) {
+				m.publisherListener.EXPECT().Shutdown().Return(nil).Times(1)
+				m.subscriberListener.EXPECT().Shutdown().Return(assert.AnError).Times(1)
+			},
+			wantErr: errors.Wrap(assert.AnError, "shutdown subscriber listener"),
+		},
+		"error_closing_comms_controller": {
+			setup: func(s *server, m mocks) {
+				m.publisherListener.EXPECT().Shutdown().Return(nil).Times(1)
+				m.subscriberListener.EXPECT().Shutdown().Return(nil).Times(1)
+				m.controller.EXPECT().Close().Return(assert.AnError).Times(1)
+			},
+			wantErr: errors.Wrap(assert.AnError, "close comms controller"),
+		},
+		"happy_path": {
+			setup: func(s *server, m mocks) {
+				m.publisherListener.EXPECT().Shutdown().Return(nil).Times(1)
+				m.subscriberListener.EXPECT().Shutdown().Return(nil).Times(1)
+				m.controller.EXPECT().Close().Return(nil).Times(1)
+			},
+			wantErr: nil,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			var (
+				ctrl           = gomock.NewController(t)
+				publisherMock  = listenermocks.NewMockListener(ctrl)
+				subscriberMock = listenermocks.NewMockListener(ctrl)
+				controllerMock = controllermocks.NewMockCommsController(ctrl)
+			)
+			s := &server{
+				started:            true,
+				publisherListener:  publisherMock,
+				subscriberListener: subscriberMock,
+				commsController:    controllerMock,
+			}
+			tc.setup(s, mocks{
+				publisherListener:  publisherMock,
+				subscriberListener: subscriberMock,
+				controller:         controllerMock,
+			})
+
+			err := s.Shutdown()
+			if tc.wantErr != nil {
+				require.EqualError(t, err, tc.wantErr.Error())
+				return
+			}
+			require.NoError(t, err)
+			require.False(t, s.started)
+		})
+	}
+}
+
 func TestServer_addPublisher(t *testing.T) {
 	type mocks struct {
 		conn       *connectionmocks.MockConnection
