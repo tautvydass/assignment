@@ -22,6 +22,8 @@ type Receiver interface {
 	// begins listening to messages. Given channel is closed
 	// when connection is closed by the server.
 	Start(port int, connectionClosed chan struct{}) error
+	// SetMessageReceiver sets the message receiver callback.
+	SetMessageReceiver(receiver connection.MessageReceiver)
 	// Close closes the connection with the server.
 	Close() error
 }
@@ -48,6 +50,10 @@ func (r *receiver) Start(port int, connectionClosed chan struct{}) error {
 
 	log.Infof("Started listening to messages on port %d", port)
 	return nil
+}
+
+func (r *receiver) SetMessageReceiver(receiver connection.MessageReceiver) {
+	r.readStream.SetMessageReceiver(receiver)
 }
 
 func (r *receiver) setupReadStream(port int) (connection.ReadStream, error) {
