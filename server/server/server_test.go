@@ -1,9 +1,15 @@
 package server
 
 import (
+	"context"
 	"crypto/tls"
 	"testing"
+	"time"
 
+	"assignment/lib/connection"
+	connectionmocks "assignment/lib/connection/mocks"
+	"assignment/lib/entity"
+	controllermocks "assignment/server/server/controller/mocks"
 	"assignment/server/server/listener"
 	listenermocks "assignment/server/server/listener/mocks"
 
@@ -109,6 +115,127 @@ func TestServer_Start(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.True(t, s.started)
+		})
+	}
+}
+
+func TestServer_addPublisher(t *testing.T) {
+	type mocks struct {
+		conn       *connectionmocks.MockConnection
+		stream     *connectionmocks.MockReadWriteStream
+		controller *controllermocks.MockCommsController
+	}
+
+	var (
+		config = Config{
+			SendMessageTimeout: time.Second,
+			OpenStreamTimeout:  time.Minute,
+		}
+		messageReceiver = func(_ entity.Message) {}
+		tests           = map[string]struct {
+			setup func(m mocks)
+		}{
+			"error_opening_stream": {
+				setup: func(m mocks) {
+					m.controller.EXPECT().MessageReceiver().
+						Return(messageReceiver).Times(1)
+					m.conn.EXPECT().OpenReadWriteStream(gomock.Any(), gomock.Any()).
+						Return(nil, assert.AnError).Times(1)
+				},
+			},
+			"happy_path": {
+				setup: func(m mocks) {
+					m.controller.EXPECT().MessageReceiver().
+						Return(messageReceiver).Times(1)
+					m.conn.EXPECT().OpenReadWriteStream(gomock.Any(), gomock.Any()).
+						DoAndReturn(
+							func(_ context.Context, mr connection.MessageReceiver) (connection.ReadWriteStream, error) {
+								require.NotNil(t, mr)
+								return m.stream, nil
+							}).Times(1)
+					m.stream.EXPECT().SetSendMessageTimeout(config.SendMessageTimeout).Times(1)
+					m.controller.EXPECT().AddPublisher(m.stream).Times(1)
+				},
+			},
+		}
+	)
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			var (
+				ctrl           = gomock.NewController(t)
+				connectionMock = connectionmocks.NewMockConnection(ctrl)
+				streamMock     = connectionmocks.NewMockReadWriteStream(ctrl)
+				controllerMock = controllermocks.NewMockCommsController(ctrl)
+			)
+
+			tc.setup(mocks{
+				conn:       connectionMock,
+				stream:     streamMock,
+				controller: controllerMock,
+			})
+			s := &server{
+				config:          config,
+				commsController: controllerMock,
+			}
+
+			s.addPublisher(connectionMock)
+		})
+	}
+}
+
+func TestServer_addSubscriber(t *testing.T) {
+	type mocks struct {
+		conn       *connectionmocks.MockConnection
+		stream     *connectionmocks.MockReadWriteStream
+		controller *controllermocks.MockCommsController
+	}
+
+	var (
+		config = Config{
+			SendMessageTimeout: time.Second,
+			OpenStreamTimeout:  time.Minute,
+		}
+		tests = map[string]struct {
+			setup func(m mocks)
+		}{
+			"error_opening_stream": {
+				setup: func(m mocks) {
+					m.conn.EXPECT().OpenWriteStream(gomock.Any()).
+						Return(nil, assert.AnError).Times(1)
+				},
+			},
+			"happy_path": {
+				setup: func(m mocks) {
+					m.conn.EXPECT().OpenWriteStream(gomock.Any()).
+						Return(m.stream, nil).Times(1)
+					m.stream.EXPECT().SetSendMessageTimeout(config.SendMessageTimeout).Times(1)
+					m.controller.EXPECT().AddSubscriber(m.stream).Times(1)
+				},
+			},
+		}
+	)
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			var (
+				ctrl           = gomock.NewController(t)
+				connectionMock = connectionmocks.NewMockConnection(ctrl)
+				streamMock     = connectionmocks.NewMockReadWriteStream(ctrl)
+				controllerMock = controllermocks.NewMockCommsController(ctrl)
+			)
+
+			tc.setup(mocks{
+				conn:       connectionMock,
+				stream:     streamMock,
+				controller: controllerMock,
+			})
+			s := &server{
+				config:          config,
+				commsController: controllerMock,
+			}
+
+			s.addSubscriber(connectionMock)
 		})
 	}
 }
