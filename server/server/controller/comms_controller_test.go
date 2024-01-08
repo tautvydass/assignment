@@ -41,6 +41,7 @@ func TestCommsController_MessageReceiver_and_sendToSubscribers(t *testing.T) {
 }
 
 func TestCommsController_AddPublisher_and_AddSubscriber(t *testing.T) {
+	helloSubscriberMessage := entity.Message{Text: MessageHelloSubscriber}
 	t.Run("subscriber_added_after_publisher", func(t *testing.T) {
 		var wg sync.WaitGroup
 		wg.Add(2)
@@ -65,6 +66,8 @@ func TestCommsController_AddPublisher_and_AddSubscriber(t *testing.T) {
 		)
 
 		subscriberStream := connectionmock.NewMockReadWriteStream(ctrl)
+		subscriberStream.EXPECT().SendMessage(helloSubscriberMessage).
+			Return(nil).Times(1)
 		subscriberStream.EXPECT().CloseStream().Return(nil).Times(1)
 
 		c := NewCommsController().(*commsController)
@@ -102,9 +105,13 @@ func TestCommsController_AddPublisher_and_AddSubscriber(t *testing.T) {
 		)
 
 		subscriberStream1 := connectionmock.NewMockReadWriteStream(ctrl)
+		subscriberStream1.EXPECT().SendMessage(helloSubscriberMessage).
+			Return(nil).Times(1)
 		subscriberStream1.EXPECT().CloseStream().Return(nil).Times(1)
 
 		subscriberStream2 := connectionmock.NewMockReadWriteStream(ctrl)
+		subscriberStream2.EXPECT().SendMessage(helloSubscriberMessage).
+			Return(nil).Times(1)
 		subscriberStream2.EXPECT().CloseStream().Return(nil).Times(1)
 
 		c := NewCommsController().(*commsController)

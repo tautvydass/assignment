@@ -18,6 +18,8 @@ const (
 	MessageNoSubscribers = "No subscribers are currently connected"
 	// MessageNewSubscriber is the message sent to publishers when a new subscriber connects.
 	MessageNewSubscriber = "New subscriber connected"
+	// MessageHelloSubscriber  is the message sent to subscribers when they connect.
+	MessageHelloSubscriber = "Hello from server! You're all set."
 )
 
 // CommsController is the interface for the comms controller. It is responsible
@@ -76,13 +78,18 @@ func (c *commsController) AddPublisher(publisher connection.ReadWriteStream) {
 func (c *commsController) AddSubscriber(subscriber connection.WriteStream) {
 	notifier := newNotifier(subscriber, c.removeSubscriber)
 
+	// Say hello to the subscriber to establish the connection.
+	// TODO: remove this once WriteStream supports pinging the peer.
+	message := entity.Message{Text: MessageHelloSubscriber}
+	notifier.queueMessage(message)
+
 	c.Lock()
 	c.subscribers[subscriber] = notifier
 	c.Unlock()
 	log.Info("New subscriber successfully connected")
 
 	// Inform the publishers of the new subscriber.
-	message := entity.Message{Text: MessageNewSubscriber}
+	message = entity.Message{Text: MessageNewSubscriber}
 	c.sendToPublishers(message)
 }
 

@@ -29,6 +29,8 @@ type writeStream struct {
 }
 
 // NewWriteStream constructs a new write stream.
+// TODO: consider implementing a ping mechanism to check if the
+// connection is still alive.
 func NewWriteStream(conn quic.Connection, stream quic.SendStream) WriteStream {
 	return &writeStream{
 		conn:   conn,
