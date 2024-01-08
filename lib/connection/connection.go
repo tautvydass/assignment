@@ -19,21 +19,18 @@ type Connection interface {
 	AcceptReadStream(
 		ctx context.Context,
 		messageReceiver MessageReceiver,
-		connectionClosed chan struct{},
 	) (ReadStream, error)
 	// OpenReadWriteStream opens a new bidirectional stream
 	// for sending and receiving messages.
 	OpenReadWriteStream(
 		ctx context.Context,
 		messageReceiver MessageReceiver,
-		connectionClosed chan struct{},
 	) (ReadWriteStream, error)
 	// AcceptReadWriteStream accepts a new bidirectional
 	// stream for sending and receiving messages.
 	AcceptReadWriteStream(
 		ctx context.Context,
 		messageReceiver MessageReceiver,
-		connectionClosed chan struct{},
 	) (ReadWriteStream, error)
 }
 
@@ -60,38 +57,35 @@ func (c *connection) OpenWriteStream(ctx context.Context) (WriteStream, error) {
 func (c *connection) AcceptReadStream(
 	ctx context.Context,
 	messageReceiver MessageReceiver,
-	connectionClosed chan struct{},
 ) (ReadStream, error) {
 	str, err := c.conn.AcceptUniStream(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "accept unidirectional stream")
 	}
 
-	return NewReadStream(c.conn, str, messageReceiver, connectionClosed), nil
+	return NewReadStream(c.conn, str, messageReceiver), nil
 }
 
 func (c *connection) OpenReadWriteStream(
 	ctx context.Context,
 	messageReceiver MessageReceiver,
-	connectionClosed chan struct{},
 ) (ReadWriteStream, error) {
 	str, err := c.conn.OpenStreamSync(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "open stream")
 	}
 
-	return NewReadWriteStream(c.conn, str, messageReceiver, connectionClosed), nil
+	return NewReadWriteStream(c.conn, str, messageReceiver), nil
 }
 
 func (c *connection) AcceptReadWriteStream(
 	ctx context.Context,
 	messageReceiver MessageReceiver,
-	connectionClosed chan struct{},
 ) (ReadWriteStream, error) {
 	str, err := c.conn.AcceptStream(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "accept stream")
 	}
 
-	return NewReadWriteStream(c.conn, str, messageReceiver, connectionClosed), nil
+	return NewReadWriteStream(c.conn, str, messageReceiver), nil
 }

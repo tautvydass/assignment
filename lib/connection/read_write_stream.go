@@ -30,19 +30,22 @@ func NewReadWriteStream(
 	conn quic.Connection,
 	stream quic.Stream,
 	messageReceiver MessageReceiver,
-	connectionClosed chan struct{},
 ) ReadWriteStream {
 	return &readWriteStream{
 		conn:   conn,
 		stream: stream,
 
-		readStream:  NewReadStream(conn, stream, messageReceiver, connectionClosed),
+		readStream:  NewReadStream(conn, stream, messageReceiver),
 		writeStream: NewWriteStream(conn, stream),
 	}
 }
 
 func (s *readWriteStream) SetMessageReceiver(messageReceiver MessageReceiver) {
 	s.readStream.SetMessageReceiver(messageReceiver)
+}
+
+func (s *readWriteStream) SetConnClosedCallback(connClosedCallback ConnClosedCallback) {
+	s.readStream.SetConnClosedCallback(connClosedCallback)
 }
 
 func (s *readWriteStream) SetReadBufferSize(size int) {

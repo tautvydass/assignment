@@ -46,18 +46,20 @@ func New() Receiver {
 
 func (r *receiver) Start(port int, connectionClosed chan struct{}) error {
 	var err error
-	r.readStream, err = r.setupReadStream(port, connectionClosed)
+	r.readStream, err = r.setupReadStream(port)
 	if err != nil {
 		return errors.Wrap(err, "setup read stream")
 	}
+
+	r.readStream.SetConnClosedCallback(func() {
+		connectionClosed <- struct{}{}
+	})
 
 	log.Infof("Started listening to messages on port %d", port)
 	return nil
 }
 
-func (r *receiver) setupReadStream(
-	port int, connectionClosed chan struct{},
-) (connection.ReadStream, error) {
+func (r *receiver) setupReadStream(port int) (connection.ReadStream, error) {
 	log.Trace("Setting up UDP connection...")
 	udpConn, err := net.ListenUDP("udp4", &net.UDPAddr{Port: 0})
 	if err != nil {
@@ -79,7 +81,7 @@ func (r *receiver) setupReadStream(
 	}
 
 	log.Trace("Accepting read stream and waiting for messages...")
-	return connection.New(conn).AcceptReadStream(ctx, r.handleMessage, connectionClosed)
+	return connection.New(conn).AcceptReadStream(ctx, r.handleMessage)
 }
 
 func (r *receiver) handleMessage(message entity.Message) {

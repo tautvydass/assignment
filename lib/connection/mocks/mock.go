@@ -64,6 +64,18 @@ func (mr *MockReadWriteStreamMockRecorder) SendMessage(arg0 interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMessage", reflect.TypeOf((*MockReadWriteStream)(nil).SendMessage), arg0)
 }
 
+// SetConnClosedCallback mocks base method.
+func (m *MockReadWriteStream) SetConnClosedCallback(arg0 connection.ConnClosedCallback) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetConnClosedCallback", arg0)
+}
+
+// SetConnClosedCallback indicates an expected call of SetConnClosedCallback.
+func (mr *MockReadWriteStreamMockRecorder) SetConnClosedCallback(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetConnClosedCallback", reflect.TypeOf((*MockReadWriteStream)(nil).SetConnClosedCallback), arg0)
+}
+
 // SetMessageReceiver mocks base method.
 func (m *MockReadWriteStream) SetMessageReceiver(arg0 connection.MessageReceiver) {
 	m.ctrl.T.Helper()
