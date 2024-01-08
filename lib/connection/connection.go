@@ -13,6 +13,12 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
+// TODO: add tests by creating interface type aliases
+// for quic.Connection, quic.Stream, quic.ReceiveStream,
+// and quic.SendStream, then generating mocks using those
+// aliases. Currently, only the happy paths of this package
+// are covered.
+
 // DefaultIdleTimeout is the default idle timeout for the
 // connection.
 const DefaultIdleTimeout = time.Hour

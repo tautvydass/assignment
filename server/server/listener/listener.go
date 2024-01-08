@@ -20,7 +20,9 @@ type NewConnectionCallback func(conn connection.Connection)
 
 // Listener is an interface for the connection listener.
 type Listener interface {
+	// Start starts the listener on the given port on a separate goroutine.
 	Start(port int, tlsConfig *tls.Config) error
+	// Shutdown shuts down the listener.
 	Shutdown() error
 }
 

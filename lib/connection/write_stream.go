@@ -21,8 +21,6 @@ type WriteStream interface {
 }
 
 type writeStream struct {
-	// TODO: create a stripped interface alias for quic.SendStream and
-	// use it instead of quic.SendStream.
 	conn    quic.Connection
 	stream  quic.SendStream
 	timeout time.Duration
