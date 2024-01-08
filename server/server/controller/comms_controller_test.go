@@ -48,6 +48,7 @@ func TestCommsController_AddPublisher_and_AddSubscriber(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		publisherStream := connectionmock.NewMockReadWriteStream(ctrl)
 		gomock.InOrder(
+			publisherStream.EXPECT().SetConnClosedCallback(gomock.Any()).Times(1),
 			publisherStream.EXPECT().SendMessage(entity.Message{
 				Text: MessageNoSubscribers,
 			}).DoAndReturn(func(_ entity.Message) error {
@@ -84,6 +85,7 @@ func TestCommsController_AddPublisher_and_AddSubscriber(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		publisherStream := connectionmock.NewMockReadWriteStream(ctrl)
 		gomock.InOrder(
+			publisherStream.EXPECT().SetConnClosedCallback(gomock.Any()).Times(1),
 			publisherStream.EXPECT().SendMessage(entity.Message{
 				Text: "1 subscriber(s) currently connected",
 			}).DoAndReturn(func(_ entity.Message) error {
@@ -150,4 +152,26 @@ func TestCommsController_sendToSubscribers_and_removeSubscriber(t *testing.T) {
 		require.Len(t, c.publishers, 1)
 		require.Len(t, c.subscribers, 0)
 	})
+}
+
+func TestCommsController_AddPublisher_and_removePublisher(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	var callback func()
+
+	publisherStream := connectionmock.NewMockReadWriteStream(ctrl)
+	publisherStream.EXPECT().SetConnClosedCallback(gomock.Any()).
+		DoAndReturn(func(cb func()) { callback = cb }).Times(1)
+	publisherStream.EXPECT().SendMessage(entity.Message{
+		Text: MessageNoSubscribers,
+	}).Return(nil).Times(1)
+	publisherStream.EXPECT().CloseStream().Return(nil).Times(1)
+
+	c := NewCommsController().(*commsController)
+	defer c.Close()
+
+	c.AddPublisher(publisherStream)
+	require.Len(t, c.publishers, 1)
+	callback()
+
+	require.Len(t, c.publishers, 0)
 }

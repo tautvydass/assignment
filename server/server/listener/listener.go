@@ -87,7 +87,11 @@ func (l *listener) run() {
 		default:
 			conn, err := l.listener.Accept(ctx)
 			if err != nil {
-				log.Errorf("Error accepting connection: %v", err)
+				// Ignore context canceled error as it's expected only when
+				// the server is shutting down. Log the error otherwise.
+				if !errors.Is(err, context.Canceled) {
+					log.Errorf("Error accepting connection: %v", err)
+				}
 				continue
 			}
 

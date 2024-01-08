@@ -58,6 +58,7 @@ func NewCommsController() CommsController {
 
 func (c *commsController) AddPublisher(publisher connection.ReadWriteStream) {
 	notifier := newNotifier(publisher, nil)
+	publisher.SetConnClosedCallback(func() { c.removePublisher(publisher) })
 
 	c.Lock()
 	c.publishers[publisher] = notifier
@@ -176,6 +177,25 @@ func (c *commsController) getPublisherNotifiers() []*notifier {
 	}
 
 	return notifiers
+}
+
+func (c *commsController) removePublisher(publisher connection.ReadWriteStream) {
+	if err := publisher.CloseStream(); err != nil {
+		log.Errorf("Error closing publisher stream: %s", err.Error())
+	}
+
+	c.Lock()
+	defer c.Unlock()
+
+	notifier, ok := c.publishers[publisher]
+	if !ok {
+		log.Warn("Notifier for publisher not found")
+	} else {
+		notifier.stop()
+	}
+
+	delete(c.publishers, publisher)
+	log.Warn("Publisher disconnected")
 }
 
 func (c *commsController) removeSubscriber(sender sender) {

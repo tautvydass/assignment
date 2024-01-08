@@ -109,7 +109,6 @@ func (s *server) addPublisher(conn connection.Connection) {
 	readWriteStream.SetSendMessageTimeout(s.config.SendMessageTimeout)
 
 	s.commsController.AddPublisher(readWriteStream)
-	// TODO: handle disconnected publisher
 }
 
 func (s *server) addSubscriber(conn connection.Connection) {
