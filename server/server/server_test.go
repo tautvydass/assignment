@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"assignment/lib/certificate"
 	"assignment/lib/connection"
 	connectionmocks "assignment/lib/connection/mocks"
 	"assignment/lib/entity"
@@ -20,13 +21,18 @@ import (
 )
 
 func TestServer(t *testing.T) {
-	server := New(Config{
+	tlsConfig, err := certificate.LoadTLSConfig(
+		"testdata/test_server.crt", "testdata/test_server.key")
+	require.NoError(t, err)
+
+	config := Config{
 		SubscriberPort:     8083,
 		PublisherPort:      8084,
-		TLS:                &tls.Config{},
+		TLS:                tlsConfig,
 		OpenStreamTimeout:  time.Second,
 		SendMessageTimeout: time.Second,
-	})
+	}
+	server := New(config)
 
 	require.NoError(t, server.Start())
 

@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"assignment/lib/certificate"
 	"assignment/lib/log"
 	"assignment/server/config"
 	"assignment/server/server"
@@ -31,12 +31,9 @@ func main() {
 	}
 
 	// Load TLS certificate and key.
-	cert, err := tls.LoadX509KeyPair(args[1], args[2])
+	tlsConfig, err := certificate.LoadTLSConfig(args[1], args[2])
 	if err != nil {
-		panic(fmt.Sprintf("error loading TLS certificate and key: %v", err))
-	}
-	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{cert},
+		panic(fmt.Sprintf("load TLS config: %v", err))
 	}
 
 	// Start the server.
