@@ -2,10 +2,20 @@ package connection
 
 import (
 	"context"
+	"crypto/tls"
+	"fmt"
+	"net"
+	"time"
+
+	"assignment/lib/log"
 
 	"github.com/pkg/errors"
 	"github.com/quic-go/quic-go"
 )
+
+// DefaultIdleTimeout is the default idle timeout for the
+// connection.
+const DefaultIdleTimeout = time.Hour
 
 // Connection is an interface for the connection.
 type Connection interface {
@@ -88,4 +98,30 @@ func (c *connection) AcceptReadWriteStream(
 	}
 
 	return NewReadWriteStream(c.conn, str, messageReceiver), nil
+}
+
+// Connect dials the server on the given port and returns the connection.
+func Connect(ctx context.Context, port int) (Connection, error) {
+	// Set up UDP connection.
+	log.Trace("Setting up UDP connection...")
+	udpConn, err := net.ListenUDP("udp4", &net.UDPAddr{Port: 0})
+	if err != nil {
+		return nil, errors.Wrap(err, "listen udp")
+	}
+
+	// Set up QUIC transport.
+	transport := &quic.Transport{Conn: udpConn}
+
+	// Dial the server.
+	address := fmt.Sprintf("localhost:%d", port)
+	log.Tracef("Dialing the server on address %q...", address)
+	conn, err := transport.Dial(
+		ctx, &net.UDPAddr{Port: port}, &tls.Config{InsecureSkipVerify: true}, &quic.Config{
+			MaxIdleTimeout: DefaultIdleTimeout,
+		})
+	if err != nil {
+		return nil, errors.Wrapf(err, "dial %q", address)
+	}
+
+	return New(conn), nil
 }

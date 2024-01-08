@@ -2,9 +2,6 @@ package receiver
 
 import (
 	"context"
-	"crypto/tls"
-	"fmt"
-	"net"
 	"time"
 
 	"assignment/lib/connection"
@@ -12,17 +9,11 @@ import (
 	"assignment/lib/log"
 
 	"github.com/pkg/errors"
-	"github.com/quic-go/quic-go"
 )
 
-const (
-	// DefaultTimeout is the default timeout for establishing
-	// a connection to the server.
-	DefaultTimeout = time.Hour
-	// DefaultIdleTimeout is the default idle timeout for the
-	// connection.
-	DefaultIdleTimeout = time.Hour
-)
+// DefaultTimeout is the default timeout for establishing
+// a connection to the server.
+const DefaultTimeout = time.Hour
 
 // Receiver is an interface for receiving messages from
 // the server. The receiver will log all received messages.
@@ -60,28 +51,16 @@ func (r *receiver) Start(port int, connectionClosed chan struct{}) error {
 }
 
 func (r *receiver) setupReadStream(port int) (connection.ReadStream, error) {
-	log.Trace("Setting up UDP connection...")
-	udpConn, err := net.ListenUDP("udp4", &net.UDPAddr{Port: 0})
-	if err != nil {
-		return nil, errors.Wrap(err, "listen udp")
-	}
-	transport := &quic.Transport{Conn: udpConn}
-
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
 
-	address := fmt.Sprintf("localhost:%d", port)
-	log.Tracef("Dialing the server on address %q...", address)
-	conn, err := transport.Dial(
-		ctx, &net.UDPAddr{Port: port}, &tls.Config{InsecureSkipVerify: true}, &quic.Config{
-			MaxIdleTimeout: DefaultIdleTimeout,
-		})
+	conn, err := connection.Connect(ctx, port)
 	if err != nil {
-		return nil, errors.Wrapf(err, "dial %q", address)
+		return nil, errors.Wrap(err, "connect")
 	}
 
 	log.Trace("Accepting read stream and waiting for messages...")
-	return connection.New(conn).AcceptReadStream(ctx, r.handleMessage)
+	return conn.AcceptReadStream(ctx, r.handleMessage)
 }
 
 func (r *receiver) handleMessage(message entity.Message) {

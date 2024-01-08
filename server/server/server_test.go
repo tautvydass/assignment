@@ -19,6 +19,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestServer(t *testing.T) {
+	server := New(Config{
+		SubscriberPort:     8083,
+		PublisherPort:      8084,
+		TLS:                &tls.Config{},
+		OpenStreamTimeout:  time.Second,
+		SendMessageTimeout: time.Second,
+	})
+
+	require.NoError(t, server.Start())
+
+	// TODO: simulate new publisher connecting.
+	// TODO: simulate new subscriber connecting.
+
+	require.NoError(t, server.Shutdown())
+}
+
 func TestServer_Lifecycle(t *testing.T) {
 	var (
 		config = Config{

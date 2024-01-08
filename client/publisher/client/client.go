@@ -2,9 +2,6 @@ package client
 
 import (
 	"context"
-	"crypto/tls"
-	"fmt"
-	"net"
 	"time"
 
 	"assignment/lib/connection"
@@ -12,17 +9,11 @@ import (
 	"assignment/lib/log"
 
 	"github.com/pkg/errors"
-	"github.com/quic-go/quic-go"
 )
 
-const (
-	// DefaultTimeout is the default timeout for establishing
-	// a connection to the server.
-	DefaultTimeout = time.Second * 30
-	// DefaultIdleTimeout is the default idle timeout for the
-	// connection.
-	DefaultIdleTimeout = time.Hour
-)
+// DefaultTimeout is the default timeout for establishing
+// a connection to the server.
+const DefaultTimeout = time.Second * 30
 
 // Client is an interface for publishing messages to the server. it
 // will also log all messages received from the server.
@@ -61,29 +52,16 @@ func (c *client) Start(port int, connectionClosed chan struct{}) error {
 }
 
 func (c *client) setupReadWriteStream(port int) (connection.ReadWriteStream, error) {
-	log.Trace("Setting up UDP connection...")
-	udpConn, err := net.ListenUDP("udp4", &net.UDPAddr{Port: 0})
-	if err != nil {
-		return nil, errors.Wrap(err, "listen udp")
-	}
-	transport := &quic.Transport{Conn: udpConn}
-
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
 
-	address := fmt.Sprintf("localhost:%d", port)
-	log.Tracef("Dialing the server on address %q...", address)
-	conn, err := transport.Dial(
-		ctx, &net.UDPAddr{Port: port}, &tls.Config{InsecureSkipVerify: true}, &quic.Config{
-			MaxIdleTimeout: DefaultIdleTimeout,
-		})
+	conn, err := connection.Connect(ctx, port)
 	if err != nil {
-		return nil, errors.Wrapf(err, "dial %q", address)
+		return nil, errors.Wrap(err, "connect")
 	}
 
 	log.Trace("Accepting stream...")
-	return connection.New(conn).
-		AcceptReadWriteStream(ctx, c.handleMessage)
+	return conn.AcceptReadWriteStream(ctx, c.handleMessage)
 }
 
 func (c *client) Publish(message string) error {
